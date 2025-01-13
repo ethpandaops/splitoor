@@ -56,4 +56,27 @@ notifier:
     - type: "discord"
       name: "discord"
       config:
-        url: "https://discord.com/api/webhooks/your-webhook-url"
+        webhook: "https://discord.com/api/webhooks/your-webhook-url"
+    - type: "telegram"
+      name: "telegram"
+      config:
+        botToken: "your-bot-token"
+        chatID: "your-chat-id"
+    - type: "smtp"
+      name: "smtp"
+      config:
+        host: "smtp.example.com"
+        port: 587
+        username: "your-username"
+        password: "your-password"
+        from: "your-from-email"
+        to:
+          - "your-to-email"
+    - type: "ses"
+      name: "ses"
+      config:
+        # AWS credentials and region will be automatically pulled from the environment variables
+        # eg. AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, AWS_SESSION_TOKEN, AWS_REGION
+        from: "your-from-email"
+        to:
+          - "your-to-email"

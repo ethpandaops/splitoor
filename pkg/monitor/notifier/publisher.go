@@ -3,6 +3,7 @@ package notifier
 import (
 	"context"
 
+	"github.com/ethpandaops/splitoor/pkg/monitor/event"
 	"github.com/ethpandaops/splitoor/pkg/monitor/notifier/source"
 	"github.com/sirupsen/logrus"
 )
@@ -39,9 +40,9 @@ func createSources(ctx context.Context, log logrus.FieldLogger, monitor string, 
 	return sources, nil
 }
 
-func (p *Publisher) Publish(ctx context.Context, msg string) error {
+func (p *Publisher) Publish(ctx context.Context, e event.Event) error {
 	for _, source := range p.sources {
-		if err := source.Publish(ctx, msg); err != nil {
+		if err := source.Publish(ctx, e); err != nil {
 			return err
 		}
 	}

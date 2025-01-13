@@ -11,8 +11,11 @@ type Config struct {
 type SourceType string
 
 const (
-	SourceTypeUnknown SourceType = "unknown"
-	SourceTypeDiscord SourceType = "discord"
+	SourceTypeUnknown  SourceType = "unknown"
+	SourceTypeDiscord  SourceType = "discord"
+	SourceTypeSMTP     SourceType = "smtp"
+	SourceTypeSES      SourceType = "ses"
+	SourceTypeTelegram SourceType = "telegram"
 )
 
 func (c *Config) Validate() error {
