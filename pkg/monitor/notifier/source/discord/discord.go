@@ -52,7 +52,9 @@ func (c *Discord) Publish(ctx context.Context, e event.Event) error {
 	log.Info("Publishing message to Discord")
 
 	var errorType string
+
 	var statusCode string
+
 	defer func() {
 		if errorType != "" {
 			c.metrics.IncErrors(e.GetGroup(), c.sourceName, c.GetType(), errorType, statusCode)
@@ -62,27 +64,38 @@ func (c *Discord) Publish(ctx context.Context, e event.Event) error {
 	}()
 
 	message := map[string]interface{}{
-		"content": e.GetMarkdown(),
+		"username": "Splitoor",
+		"embeds": []map[string]interface{}{
+			{
+				"title":       e.GetTitle(),
+				"description": e.GetDescription(),
+				"color":       16711680,
+			},
+		},
 	}
 
 	jsonData, err := json.Marshal(message)
 	if err != nil {
 		errorType = "marshal_error"
+
 		return fmt.Errorf("failed to marshal discord message: %w", err)
 	}
 
 	req, err := http.NewRequest("POST", c.config.Webhook, bytes.NewBuffer(jsonData))
 	if err != nil {
 		errorType = "request_error"
+
 		return fmt.Errorf("failed to create discord webhook request: %w", err)
 	}
 
 	req.Header.Set("Content-Type", "application/json")
 
 	client := &http.Client{}
+
 	resp, err := client.Do(req)
 	if err != nil {
 		errorType = "send_error"
+
 		return fmt.Errorf("failed to send discord webhook: %w", err)
 	}
 
@@ -91,7 +104,9 @@ func (c *Discord) Publish(ctx context.Context, e event.Event) error {
 	if resp.StatusCode < 200 || resp.StatusCode > 299 {
 		statusCode = strconv.Itoa(resp.StatusCode)
 		errorType = "status_error"
+
 		log.WithField("status_code", resp.StatusCode).Error("Discord webhook returned non-2xx status code")
+
 		return fmt.Errorf("discord webhook returned non-2xx status code: %d", resp.StatusCode)
 	}
 

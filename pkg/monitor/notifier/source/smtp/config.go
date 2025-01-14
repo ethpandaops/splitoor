@@ -21,7 +21,9 @@ type Config struct {
 	// To email addresses
 	To []string `yaml:"to"`
 	// Whether to use TLS
-	TLS bool `yaml:"tls" default:"true"`
+	TLS bool `yaml:"tls" default:"false"`
+	// Whether to skip TLS certificate verification
+	InsecureSkipVerify bool `yaml:"insecureSkipVerify" default:"false"`
 }
 
 // SetDefaults sets the default values for the config
@@ -38,11 +40,14 @@ func (c *Config) Validate() error {
 	if c.Host == "" {
 		return errors.New("host is required")
 	}
+
 	if c.From == "" {
 		return errors.New("from is required")
 	}
+
 	if len(c.To) == 0 {
 		return errors.New("to is required")
 	}
+
 	return nil
 }

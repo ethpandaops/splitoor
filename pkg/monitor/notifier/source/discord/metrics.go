@@ -50,10 +50,10 @@ func GetMetricsInstance(namespace, monitor string) *Metrics {
 	return metricsInstance
 }
 
-func (m Metrics) IncMessagesPublished(group string, source string, sourceType string) {
+func (m Metrics) IncMessagesPublished(group, source, sourceType string) {
 	m.published.WithLabelValues(group, source, sourceType).Inc()
 }
 
-func (m Metrics) IncErrors(group string, source string, sourceType string, errorType string, statusCode string) {
+func (m Metrics) IncErrors(group, source, sourceType, errorType, statusCode string) {
 	m.errors.WithLabelValues(group, source, sourceType, errorType, statusCode).Inc()
 }

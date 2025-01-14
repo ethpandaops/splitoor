@@ -54,8 +54,6 @@ func (s *SES) GetName() string {
 }
 
 func (s *SES) Publish(ctx context.Context, e event.Event) error {
-	textBody := e.GetText()
-
 	var errorType string
 	defer func() {
 		if errorType != "" {
@@ -73,35 +71,42 @@ func (s *SES) Publish(ctx context.Context, e event.Event) error {
 			Body: &ses.Body{
 				Text: &ses.Content{
 					Charset: aws.String("UTF-8"),
-					Data:    aws.String(textBody),
+					Data:    aws.String(e.GetDescription()),
 				},
 			},
 			Subject: &ses.Content{
 				Charset: aws.String("UTF-8"),
-				Data:    aws.String(fmt.Sprintf("[%s] %s Event", s.monitor, e.GetType())),
+				Data:    aws.String(e.GetTitle()),
 			},
 		},
 		Source: aws.String(s.config.From),
 	}
+
 	_, err := s.client.SendEmailWithContext(ctx, input)
 	if err != nil {
 		if aerr, ok := err.(awserr.Error); ok {
 			switch aerr.Code() {
 			case ses.ErrCodeMessageRejected:
 				errorType = "message_rejected"
+
 				return fmt.Errorf("message rejected: %w", aerr)
 			case ses.ErrCodeMailFromDomainNotVerifiedException:
 				errorType = "domain_not_verified"
+
 				return fmt.Errorf("mail from domain not verified: %w", aerr)
 			case ses.ErrCodeConfigurationSetDoesNotExistException:
 				errorType = "config_set_not_found"
+
 				return fmt.Errorf("configuration set does not exist: %w", aerr)
 			default:
 				errorType = "unknown_aws_error"
+
 				return fmt.Errorf("aws error: %w", aerr)
 			}
 		}
+
 		errorType = "send_error"
+
 		return fmt.Errorf("failed to send email: %w", err)
 	}
 

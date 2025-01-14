@@ -11,6 +11,7 @@ type Status struct {
 	Status    string
 	Source    string
 	Group     string
+	Monitor   string
 }
 
 const (
@@ -25,10 +26,20 @@ func (v *Status) GetGroup() string {
 	return v.Group
 }
 
-func (v *Status) GetText() string {
-	return fmt.Sprintf("Validator %s is %s", v.Pubkey, v.Status)
+func (v *Status) GetMonitor() string {
+	return v.Monitor
 }
 
-func (v *Status) GetMarkdown() string {
-	return fmt.Sprintf("Validator %s is %s", v.Pubkey, v.Status)
+func (v *Status) GetTitle() string {
+	return fmt.Sprintf("[%s] %s validator has unexpectedly status", v.Monitor, v.Group)
+}
+
+func (v *Status) GetDescription() string {
+	return fmt.Sprintf(`
+Timestamp: %s
+Monitor: %s
+Group: %s
+Source: %s
+Pubkey: %s
+Status: %s`, v.Timestamp.UTC().Format("2006-01-02 15:04:05 UTC"), v.Monitor, v.Group, v.Source, v.Pubkey, v.Status)
 }

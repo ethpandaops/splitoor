@@ -66,17 +66,21 @@ func (t *Telegram) Publish(ctx context.Context, e event.Event) error {
 	chatID, err := strconv.ParseInt(t.config.ChatID, 10, 64)
 	if err != nil {
 		errorType = "invalid_chat_id"
+
 		return fmt.Errorf("invalid chat ID: %w", err)
 	}
 
+	text := fmt.Sprintf("<b>%s</b>\n\n%s", e.GetTitle(), e.GetDescription())
+
 	_, err = t.client.SendMessage(ctx, &bot.SendMessageParams{
 		ChatID:    chatID,
-		Text:      e.GetType(),
+		Text:      text,
 		ParseMode: "HTML",
 	})
 
 	if err != nil {
 		errorType = "send_message"
+
 		return fmt.Errorf("failed to send message: %w", err)
 	}
 

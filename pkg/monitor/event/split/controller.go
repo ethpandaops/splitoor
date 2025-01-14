@@ -12,6 +12,7 @@ type Controller struct {
 	Controller   string
 	Source       string
 	Group        string
+	Monitor      string
 }
 
 const (
@@ -26,10 +27,21 @@ func (v *Controller) GetGroup() string {
 	return v.Group
 }
 
-func (v *Controller) GetText() string {
-	return fmt.Sprintf("Split %s (%s) controller has changed to %s", v.SplitName, v.SplitAddress, v.Controller)
+func (v *Controller) GetMonitor() string {
+	return v.Monitor
 }
 
-func (v *Controller) GetMarkdown() string {
-	return fmt.Sprintf("Split %s (%s) controller has changed to %s", v.SplitName, v.SplitAddress, v.Controller)
+func (v *Controller) GetTitle() string {
+	return fmt.Sprintf("[%s] %s split controller has changed", v.Monitor, v.Group)
+}
+
+func (v *Controller) GetDescription() string {
+	return fmt.Sprintf(`
+Timestamp: %s
+Monitor: %s
+Group: %s
+Source: %s
+Split Name: %s
+Split Address: %s
+Controller: %s`, v.Timestamp.UTC().Format("2006-01-02 15:04:05 UTC"), v.Monitor, v.Group, v.Source, v.SplitName, v.SplitAddress, v.Controller)
 }

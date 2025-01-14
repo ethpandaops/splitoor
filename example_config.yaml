@@ -65,10 +65,12 @@ notifier:
     - type: "smtp"
       name: "smtp"
       config:
-        host: "smtp.example.com"
-        port: 587
-        username: "your-username"
-        password: "your-password"
+        host: "localhost"
+        port: 25
+        # tls: false
+        # insecureSkipVerify: false
+        # username: "your-username"
+        # password: "your-password"
         from: "your-from-email"
         to:
           - "your-to-email"
