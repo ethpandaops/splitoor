@@ -9,7 +9,6 @@ type Status struct {
 	Timestamp time.Time
 	Pubkey    string
 	Status    string
-	Source    string
 	Group     string
 	Monitor   string
 }
@@ -17,6 +16,16 @@ type Status struct {
 const (
 	StatusType = "validator_status"
 )
+
+func NewStatus(timestamp time.Time, status string, pubkey, group, monitor string) *Status {
+	return &Status{
+		Timestamp: timestamp,
+		Pubkey:    pubkey,
+		Status:    status,
+		Group:     group,
+		Monitor:   monitor,
+	}
+}
 
 func (v *Status) GetType() string {
 	return StatusType
@@ -39,7 +48,6 @@ func (v *Status) GetDescription() string {
 Timestamp: %s
 Monitor: %s
 Group: %s
-Source: %s
 Pubkey: %s
-Status: %s`, v.Timestamp.UTC().Format("2006-01-02 15:04:05 UTC"), v.Monitor, v.Group, v.Source, v.Pubkey, v.Status)
+Status: %s`, v.Timestamp.UTC().Format("2006-01-02 15:04:05 UTC"), v.Monitor, v.Group, v.Pubkey, v.Status)
 }

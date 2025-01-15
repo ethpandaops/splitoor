@@ -8,7 +8,6 @@ import (
 type TransactionQueue struct {
 	Timestamp   time.Time
 	SafeAddress string
-	Source      string
 	Group       string
 	Monitor     string
 	NumTxs      int
@@ -39,7 +38,6 @@ func (v *TransactionQueue) GetDescription() string {
 Timestamp: %s
 Monitor: %s
 Group: %s
-Source: %s
 Safe Account: %s (https://app.safe.global/home?safe=%s)
-Number of Transactions: %d (https://app.safe.global/transactions/queue?safe=%s)`, v.Timestamp.UTC().Format("2006-01-02 15:04:05 UTC"), v.Monitor, v.Group, v.Source, v.SafeAddress, v.SafeAddress, v.NumTxs, v.SafeAddress)
+Number of Transactions: %d (https://app.safe.global/transactions/queue?safe=%s)`, v.Timestamp.UTC().Format("2006-01-02 15:04:05 UTC"), v.Monitor, v.Group, v.SafeAddress, v.SafeAddress, v.NumTxs, v.SafeAddress)
 }

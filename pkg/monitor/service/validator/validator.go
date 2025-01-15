@@ -48,7 +48,7 @@ func NewService(ctx context.Context, log logrus.FieldLogger, monitor string, con
 	groups := make([]*group.Group, 0, len(config.Groups))
 
 	for _, g := range config.Groups {
-		ng, err := group.NewGroup(ctx, log, monitor, &g, ethereumPool, bcClient)
+		ng, err := group.NewGroup(ctx, log, monitor, &g, ethereumPool, bcClient, publisher)
 		if err != nil {
 			return nil, fmt.Errorf("failed to create group client: %w", err)
 		}

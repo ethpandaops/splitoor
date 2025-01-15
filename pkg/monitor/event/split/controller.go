@@ -10,7 +10,6 @@ type Controller struct {
 	SplitAddress string
 	SplitName    string
 	Controller   string
-	Source       string
 	Group        string
 	Monitor      string
 }
@@ -40,8 +39,7 @@ func (v *Controller) GetDescription() string {
 Timestamp: %s
 Monitor: %s
 Group: %s
-Source: %s
 Split Name: %s
 Split Address: %s
-Controller: %s`, v.Timestamp.UTC().Format("2006-01-02 15:04:05 UTC"), v.Monitor, v.Group, v.Source, v.SplitName, v.SplitAddress, v.Controller)
+Controller: %s`, v.Timestamp.UTC().Format("2006-01-02 15:04:05 UTC"), v.Monitor, v.Group, v.SplitName, v.SplitAddress, v.Controller)
 }

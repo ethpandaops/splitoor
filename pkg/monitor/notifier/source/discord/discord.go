@@ -49,7 +49,7 @@ func (c *Discord) GetName() string {
 
 func (c *Discord) Publish(ctx context.Context, e event.Event) error {
 	log := c.log.WithField("group", e.GetGroup())
-	log.Info("Publishing message to Discord")
+	log.Debug("Publishing message to Discord")
 
 	var errorType string
 
@@ -110,7 +110,7 @@ func (c *Discord) Publish(ctx context.Context, e event.Event) error {
 		return fmt.Errorf("discord webhook returned non-2xx status code: %d", resp.StatusCode)
 	}
 
-	log.Info("Successfully published message to Discord")
+	log.Debug("Successfully published message to Discord")
 
 	return nil
 }

@@ -9,7 +9,6 @@ type MinBalance struct {
 	Timestamp time.Time
 	Pubkey    string
 	Balance   uint64
-	Source    string
 	Group     string
 	Monitor   string
 }
@@ -17,6 +16,16 @@ type MinBalance struct {
 const (
 	MinBalanceType = "validator_min_balance"
 )
+
+func NewMinBalance(timestamp time.Time, balance uint64, pubkey, group, monitor string) *MinBalance {
+	return &MinBalance{
+		Timestamp: timestamp,
+		Pubkey:    pubkey,
+		Balance:   balance,
+		Group:     group,
+		Monitor:   monitor,
+	}
+}
 
 func (v *MinBalance) GetType() string {
 	return MinBalanceType
@@ -39,7 +48,6 @@ func (v *MinBalance) GetDescription() string {
 Timestamp: %s
 Monitor: %s
 Group: %s
-Source: %s
 Pubkey: %s
-Balance: %.4f ETH`, v.Timestamp.UTC().Format("2006-01-02 15:04:05 UTC"), v.Monitor, v.Group, v.Source, v.Pubkey, float64(v.Balance)/1e18)
+Balance: %.4f ETH`, v.Timestamp.UTC().Format("2006-01-02 15:04:05 UTC"), v.Monitor, v.Group, v.Pubkey, float64(v.Balance)/1e9)
 }
