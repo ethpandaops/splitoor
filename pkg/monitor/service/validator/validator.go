@@ -21,10 +21,6 @@ type Service struct {
 }
 
 func NewService(ctx context.Context, log logrus.FieldLogger, monitor string, config *Config, ethereumPool *ethereum.Pool, publisher *notifier.Publisher) (*Service, error) {
-	if err := config.Validate(); err != nil {
-		return nil, err
-	}
-
 	if !config.Beaconchain.Enabled && !ethereumPool.HasBeaconNodes() {
 		return nil, fmt.Errorf("no beaconchain API key or ethereum beacon nodes configured")
 	}
@@ -42,7 +38,6 @@ func NewService(ctx context.Context, log logrus.FieldLogger, monitor string, con
 		if err != nil {
 			return nil, fmt.Errorf("failed to create beaconchain client: %w", err)
 		}
-
 	}
 
 	groups := make([]*group.Group, 0, len(config.Groups))

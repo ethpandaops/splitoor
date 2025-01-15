@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"math/big"
 	"sort"
+	"sync"
 	"time"
 
 	"github.com/0xsequence/ethkit/ethcoder"
@@ -18,13 +19,30 @@ type CreateSplitParams struct {
 	Accounts              []string
 	PercentageAllocations []uint32
 	DistributorFee        uint32
+
+	mu sync.Mutex
 }
 
-func (p *CreateSplitParams) encode() []interface{} {
+func (c *CreateSplitParams) order() error {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
+	accounts, allocations, err := ParseRecipients(c.Accounts, c.PercentageAllocations)
+	if err != nil {
+		return err
+	}
+
+	c.Accounts = accounts
+	c.PercentageAllocations = allocations
+
+	return nil
+}
+
+func (c *CreateSplitParams) encode() []interface{} {
 	// Create pairs for sorting
-	pairs := make([][2]interface{}, len(p.Accounts))
-	for i := range p.Accounts {
-		pairs[i] = [2]interface{}{p.Accounts[i], p.PercentageAllocations[i]}
+	pairs := make([][2]interface{}, len(c.Accounts))
+	for i := range c.Accounts {
+		pairs[i] = [2]interface{}{c.Accounts[i], c.PercentageAllocations[i]}
 	}
 
 	// Sort by account address
@@ -33,8 +51,8 @@ func (p *CreateSplitParams) encode() []interface{} {
 	})
 
 	// Separate back into sorted slices
-	accounts := make([]common.Address, len(p.Accounts))
-	allocations := make([]uint32, len(p.PercentageAllocations))
+	accounts := make([]common.Address, len(c.Accounts))
+	allocations := make([]uint32, len(c.PercentageAllocations))
 
 	for i := range pairs {
 		accounts[i] = common.HexToAddress(pairs[i][0].(string))
@@ -50,12 +68,16 @@ func (p *CreateSplitParams) encode() []interface{} {
 	return []interface{}{
 		accounts,
 		allocations,
-		p.DistributorFee,
-		common.HexToAddress(p.Controller),
+		c.DistributorFee,
+		common.HexToAddress(c.Controller),
 	}
 }
 
 func (c *Client) Create(ctx context.Context, node *execution.Node, contractABI *ethcoder.ABI, from, privateKey string, gasLimit uint64, params *CreateSplitParams) (*string, error) {
+	if err := params.order(); err != nil {
+		return nil, err
+	}
+
 	if c.splitAddress != nil {
 		return nil, fmt.Errorf("split address is already set")
 	}

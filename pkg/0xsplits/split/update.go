@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"math/big"
 	"sort"
+	"sync"
 	"time"
 
 	"github.com/0xsequence/ethkit/ethcoder"
@@ -17,6 +18,23 @@ type UpdateSplitParams struct {
 	Accounts              []string
 	PercentageAllocations []uint32
 	DistributorFee        uint32
+
+	mu sync.Mutex
+}
+
+func (p *UpdateSplitParams) order() error {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+
+	accounts, allocations, err := ParseRecipients(p.Accounts, p.PercentageAllocations)
+	if err != nil {
+		return err
+	}
+
+	p.Accounts = accounts
+	p.PercentageAllocations = allocations
+
+	return nil
 }
 
 func (p *UpdateSplitParams) encode(splitAddress string) []interface{} {
@@ -55,6 +73,10 @@ func (p *UpdateSplitParams) encode(splitAddress string) []interface{} {
 }
 
 func (c *Client) Update(ctx context.Context, node *execution.Node, contractABI *ethcoder.ABI, from, privateKey string, gasLimit uint64, params *UpdateSplitParams) (*string, error) {
+	if err := params.order(); err != nil {
+		return nil, err
+	}
+
 	if c.splitAddress == nil {
 		return nil, fmt.Errorf("split address is not set")
 	}

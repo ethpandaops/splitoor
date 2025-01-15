@@ -42,7 +42,6 @@ type Group struct {
 	metrics *Metrics
 
 	validatorState              *State
-	alertedPubkeys              map[string]bool
 	balanceAlerts               map[string]*alert.Balance
 	statusAlerts                map[string]*alert.Status
 	withdrawalCredentialsAlerts map[string]*alert.WithdrawalCredentials
@@ -260,30 +259,31 @@ func (g *Group) updateValidatorBeaconAPI(data *v1.Validator, source string, stat
 		return
 	}
 
-	validator := data.Validator
+	val := data.Validator
 
-	if validator == nil {
+	if val == nil {
 		return
 	}
 
 	labels := []string{
 		g.name,
-		validator.PublicKey.String(),
+		val.PublicKey.String(),
 		source,
 	}
 
 	g.metrics.UpdateBalance(float64(data.Balance), labels)
 
-	status := BeaconAPIToMetricsStatus(data.Status, validator.Slashed)
+	status := BeaconAPIToMetricsStatus(data.Status, val.Slashed)
 
-	credentialsCode, err := GetWithdrawalCredentialsCode(hex.EncodeToString(validator.WithdrawalCredentials))
+	credentialsCode, err := GetWithdrawalCredentialsCode(hex.EncodeToString(val.WithdrawalCredentials))
 	if err != nil {
-		g.log.WithError(err).WithField("credentials", validator.WithdrawalCredentials).Error("Error parsing withdrawal credentials")
+		g.log.WithError(err).WithField("credentials", val.WithdrawalCredentials).Error("Error parsing withdrawal credentials")
 	}
 
 	code := float64(0)
+
 	if credentialsCode != nil {
-		state.UpdateValidator(source, validator.PublicKey.String(), uint64(data.Balance), status, *credentialsCode)
+		state.UpdateValidator(source, val.PublicKey.String(), uint64(data.Balance), status, *credentialsCode)
 
 		code = float64(*credentialsCode)
 	}
@@ -298,7 +298,6 @@ func (g *Group) updateAlerts(changedPubkeys []string) {
 	defer g.mu.Unlock()
 
 	for _, pubkey := range changedPubkeys {
-
 		if _, exists := g.balanceAlerts[pubkey]; !exists {
 			g.balanceAlerts[pubkey] = alert.NewBalance(g.log, MinBalance)
 		}

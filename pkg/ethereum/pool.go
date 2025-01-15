@@ -135,6 +135,32 @@ func (p *Pool) GetHealthyBeaconNode() *beacon.Node {
 	return healthyNodes[rand.IntN(len(healthyNodes))]
 }
 
+func (p *Pool) WaitForHealthyBeaconNode(ctx context.Context) (*beacon.Node, error) {
+	for {
+		if node := p.GetHealthyBeaconNode(); node != nil {
+			return node, nil
+		}
+		select {
+		case <-ctx.Done():
+			return nil, ctx.Err()
+		case <-time.After(time.Second):
+		}
+	}
+}
+
+func (p *Pool) WaitForHealthyExecutionNode(ctx context.Context) (*execution.Node, error) {
+	for {
+		if node := p.GetHealthyExecutionNode(); node != nil {
+			return node, nil
+		}
+		select {
+		case <-ctx.Done():
+			return nil, ctx.Err()
+		case <-time.After(time.Second):
+		}
+	}
+}
+
 func (p *Pool) Start(ctx context.Context) {
 	g, gCtx := errgroup.WithContext(ctx)
 
