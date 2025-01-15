@@ -26,11 +26,12 @@ type Node struct {
 
 func NewNode(ctx context.Context, log logrus.FieldLogger, name string, config *Config) *Node {
 	opts := *bn.
-		DefaultOptions().
-		DisablePrometheusMetrics()
+		DefaultOptions()
 
 	opts.HealthCheck.Interval.Duration = time.Second * 3
 	opts.HealthCheck.SuccessfulResponses = 1
+	opts.PrometheusMetrics = true
+	opts.BeaconSubscription.Disable()
 
 	log = log.WithFields(logrus.Fields{"module": "ethereum/beacon", "name": name})
 
@@ -38,7 +39,7 @@ func NewNode(ctx context.Context, log logrus.FieldLogger, name string, config *C
 		Name:    name,
 		Addr:    config.NodeAddress,
 		Headers: config.NodeHeaders,
-	}, config.Name, opts)
+	}, "splitoor_ethereum_beacon", opts)
 
 	metadata := services.NewMetadataService(log, node)
 
