@@ -119,7 +119,7 @@ func (g *Group) tick(ctx context.Context) {
 
 		go func() {
 			defer wg.Done()
-			g.tickBeaconchain(ctx, newState)
+			g.checkBeaconchain(ctx, newState)
 		}()
 	}
 
@@ -128,7 +128,7 @@ func (g *Group) tick(ctx context.Context) {
 
 		go func() {
 			defer wg.Done()
-			g.tickBeaconAPI(ctx, newState)
+			g.checkBeaconAPI(ctx, newState)
 		}()
 	}
 
@@ -141,7 +141,7 @@ func (g *Group) tick(ctx context.Context) {
 	g.updateAlerts(changedPubkeys)
 }
 
-func (g *Group) tickBeaconAPI(ctx context.Context, state *State) {
+func (g *Group) checkBeaconAPI(ctx context.Context, state *State) {
 	for _, node := range g.ethereumPool.GetHealthyBeaconNodes() {
 		validators, err := node.Node().FetchValidators(ctx, "head", nil, g.pubkeys)
 		if err != nil {
@@ -154,7 +154,7 @@ func (g *Group) tickBeaconAPI(ctx context.Context, state *State) {
 	}
 }
 
-func (g *Group) tickBeaconchain(ctx context.Context, state *State) {
+func (g *Group) checkBeaconchain(ctx context.Context, state *State) {
 	g.log.Debug("Starting beaconchain validators update")
 
 	g.beaconchainLastTick = time.Now()

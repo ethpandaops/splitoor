@@ -28,7 +28,7 @@ func GetMetricsInstance(namespace, monitor string) *Metrics {
 					Help:        "The balance of the account.",
 					ConstLabels: constLabels,
 				},
-				[]string{"group", "split", "source"},
+				[]string{"group", "source", "address"},
 			),
 			splitBalance: prometheus.NewGaugeVec(
 				prometheus.GaugeOpts{
@@ -37,7 +37,7 @@ func GetMetricsInstance(namespace, monitor string) *Metrics {
 					Help:        "The balance of the account on the splits contract (not yet withdrawn).",
 					ConstLabels: constLabels,
 				},
-				[]string{"group", "split", "source", "expected_hash"},
+				[]string{"group", "source", "address"},
 			),
 		}
 

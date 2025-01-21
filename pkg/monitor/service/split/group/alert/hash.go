@@ -22,18 +22,15 @@ func NewHash(log logrus.FieldLogger, expectedHash string) *Hash {
 	}
 }
 
-func (b *Hash) Update(hash string) (shouldAlert bool, alertingHash *string) {
+func (b *Hash) Update(hash string) (shouldAlert bool) {
 	b.mu.Lock()
 	defer b.mu.Unlock()
 
-	// check if any new balances trigger the alert
-	shouldBeAlerting, alertingHash := b.check(hash)
+	shouldBeAlerting := hash != b.expectedHash
 
-	// if already alerting, check if should still be alerting
 	if b.alerting {
-		// shouldn't re-alert if already alerting
 		shouldAlert = false
-		// stop alerting if no longer should be alerting
+
 		if !shouldBeAlerting {
 			b.alerting = false
 		}
@@ -49,12 +46,4 @@ func (b *Hash) Update(hash string) (shouldAlert bool, alertingHash *string) {
 	b.hash = hash
 
 	return
-}
-
-func (b *Hash) check(h string) (shouldAlert bool, hash *string) {
-	if h != b.expectedHash {
-		return true, &h
-	}
-
-	return false, nil
 }

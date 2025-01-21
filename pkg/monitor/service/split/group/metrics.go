@@ -25,11 +25,11 @@ func GetMetricsInstance(namespace, monitor string) *Metrics {
 			balance: prometheus.NewGaugeVec(
 				prometheus.GaugeOpts{
 					Namespace:   namespace,
-					Name:        "balancea",
+					Name:        "balance",
 					Help:        "The balance of the split.",
 					ConstLabels: constLabels,
 				},
-				[]string{"group", "split", "source"},
+				[]string{"group", "source", "split_address"},
 			),
 			hash: prometheus.NewGaugeVec(
 				prometheus.GaugeOpts{
@@ -38,7 +38,7 @@ func GetMetricsInstance(namespace, monitor string) *Metrics {
 					Help:        "The hash of the split matches expected hash.",
 					ConstLabels: constLabels,
 				},
-				[]string{"group", "split", "source", "expected_hash"},
+				[]string{"group", "source", "split_address", "expected_hash", "actual_hash"},
 			),
 			controller: prometheus.NewGaugeVec(
 				prometheus.GaugeOpts{
@@ -47,7 +47,7 @@ func GetMetricsInstance(namespace, monitor string) *Metrics {
 					Help:        "The controller of the split matches expected controller.",
 					ConstLabels: constLabels,
 				},
-				[]string{"group", "split", "source", "expected_controller"},
+				[]string{"group", "source", "split_address", "expected_controller", "actual_controller"},
 			),
 		}
 

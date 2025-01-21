@@ -36,8 +36,6 @@ type Safe struct {
 	recoveryAccounts      []string
 	recoveryAllocations   []uint32
 
-	ticker *time.Ticker
-
 	safeClient safe.Client
 
 	excessQueue   *alert.ExcessQueue
@@ -81,35 +79,22 @@ func New(ctx context.Context, log logrus.FieldLogger, monitor, name string, conf
 }
 
 func (c *Safe) Start(ctx context.Context) error {
-	c.log.Info("Starting safe controller")
-
 	if c.safeClient == nil {
 		c.log.Warn("Safe config disabled, skipping")
 
 		return nil
 	}
 
-	go func() {
-		newCtx, cancel := context.WithTimeout(ctx, time.Second*10)
-		defer cancel()
-
-		if err := c.tick(newCtx); err != nil {
-			c.log.WithError(err).Error("failed to tick safe controller")
-		}
-	}()
-
-	c.ticker = time.NewTicker(time.Second * 60)
+	c.tick(ctx)
 
 	go func() {
-		for range c.ticker.C {
-			func() {
-				newCtx, cancel := context.WithTimeout(ctx, time.Second*10)
-				defer cancel()
-
-				if err := c.tick(newCtx); err != nil {
-					c.log.WithError(err).Error("failed to tick safe controller")
-				}
-			}()
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			case <-time.After(time.Second * 12):
+				c.tick(ctx)
+			}
 		}
 	}()
 
@@ -132,10 +117,12 @@ func (c *Safe) Address() string {
 	return c.address
 }
 
-func (c *Safe) tick(ctx context.Context) error {
+func (c *Safe) tick(ctx context.Context) {
 	queued, err := c.safeClient.GetQueuedTransactions(ctx, c.address)
 	if err != nil {
-		return fmt.Errorf("failed to get queued transactions: %w", err)
+		c.log.WithError(err).Error("failed to get queued transactions")
+
+		return
 	}
 
 	var txns []*safe.QueuedTransactionResult
@@ -165,8 +152,9 @@ func (c *Safe) tick(ctx context.Context) error {
 	for i, tx := range txns {
 		txDetails, err := c.safeClient.GetTransaction(ctx, tx.Transaction.ID)
 		if err != nil {
-			// update safe error metrics
-			return fmt.Errorf("failed to get recovery transaction details: %w", err)
+			c.log.WithError(err).Error("failed to get recovery transaction details")
+
+			return
 		}
 
 		// check to
@@ -290,12 +278,10 @@ func (c *Safe) tick(ctx context.Context) error {
 		}
 	}
 
-	c.metrics.UpdateTransactionRecoveryInvalid(boolToFloat64(invalidRecoveryError != nil), []string{c.name, c.address, c.Type()})
+	c.metrics.UpdateTransactionRecoveryValid(boolToFloat64(recoveryTx != "" && invalidRecoveryError == nil), []string{c.name, c.address, c.Type()})
 	c.metrics.UpdateTransactionRecoveryExists(boolToFloat64(recoveryTx != ""), []string{c.name, c.address, c.Type()})
 	c.metrics.UpdateTransactionRecoveryNext(boolToFloat64(hasNextRecoveryTx), []string{c.name, c.address, c.Type()})
 	c.metrics.UpdateTransactionRecoveryPreSigned(boolToFloat64(currentConfirmations == expectedConfirmations), []string{c.name, c.address, c.Type(), strconv.Itoa(expectedConfirmations), strconv.Itoa(currentConfirmations)})
-
-	return nil
 }
 
 func boolToFloat64(b bool) float64 {

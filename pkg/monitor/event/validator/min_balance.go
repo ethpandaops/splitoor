@@ -49,5 +49,5 @@ Timestamp: %s
 Monitor: %s
 Group: %s
 Pubkey: %s
-Balance: %.4f ETH`, v.Timestamp.UTC().Format("2006-01-02 15:04:05 UTC"), v.Monitor, v.Group, v.Pubkey, float64(v.Balance)/1e9)
+Balance: %.4f ETH`, v.Timestamp.UTC().Format("2006-01-02 15:04:05 UTC"), v.Monitor, v.Group, v.Pubkey, float64(v.Balance)/1e18)
 }

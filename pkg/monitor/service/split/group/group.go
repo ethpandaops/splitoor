@@ -3,12 +3,13 @@ package group
 import (
 	"context"
 	"encoding/hex"
-	"sync"
 	"time"
 
+	"github.com/0xsequence/ethkit/ethcoder"
 	"github.com/ethpandaops/splitoor/pkg/0xsplits/contract"
 	spl "github.com/ethpandaops/splitoor/pkg/0xsplits/split"
 	"github.com/ethpandaops/splitoor/pkg/ethereum"
+	event "github.com/ethpandaops/splitoor/pkg/monitor/event/split"
 	"github.com/ethpandaops/splitoor/pkg/monitor/notifier"
 	"github.com/ethpandaops/splitoor/pkg/monitor/safe"
 	"github.com/ethpandaops/splitoor/pkg/monitor/service/split/group/account"
@@ -33,20 +34,18 @@ type Group struct {
 	ethereumPool *ethereum.Pool
 	safeClient   safe.Client
 
-	address    string
-	client     *spl.Client
-	contract   string
-	hash       string
-	accounts   []*account.Account
-	controller controller.Controller
+	address     string
+	client      *spl.Client
+	contractABI *ethcoder.ABI
+	contract    string
+	hash        string
+	accounts    []*account.Account
+	controller  controller.Controller
 
 	metrics *Metrics
 
-	validatorState *State
-	balanceAlerts  map[string]*alert.Controller
-	statusAlerts   map[string]*alert.Hash
-
-	mu sync.Mutex
+	hashAlert       *alert.Hash
+	controllerAlert *alert.Controller
 }
 
 func NewGroup(ctx context.Context, log logrus.FieldLogger, monitor string, conf *Config, ethereumPool *ethereum.Pool, publisher *notifier.Publisher, safeClient safe.Client) (*Group, error) {
@@ -61,7 +60,7 @@ func NewGroup(ctx context.Context, log logrus.FieldLogger, monitor string, conf 
 	accounts := make([]*account.Account, len(conf.Accounts))
 
 	for i, acc := range conf.Accounts {
-		accounts[i] = account.NewAccount(log, monitor, conf.Name, acc.Address, acc.Allocation, acc.Monitor)
+		accounts[i] = account.NewAccount(log, monitor, conf.Name, acc.Address, acc.Allocation, acc.Monitor, ethereumPool)
 	}
 
 	ctr, err := controller.NewController(ctx, log, monitor, conf.Name, conf.Controller.ControllerType, conf.Controller.Config, conf.Address, c, ethereumPool, safeClient, publisher)
@@ -70,20 +69,19 @@ func NewGroup(ctx context.Context, log logrus.FieldLogger, monitor string, conf 
 	}
 
 	return &Group{
-		log:            log,
-		name:           conf.Name,
-		monitor:        monitor,
-		publisher:      publisher,
-		ethereumPool:   ethereumPool,
-		safeClient:     safeClient,
-		address:        conf.Address,
-		contract:       c,
-		accounts:       accounts,
-		controller:     ctr,
-		metrics:        GetMetricsInstance("splitoor_split", monitor),
-		balanceAlerts:  make(map[string]*alert.Controller),
-		statusAlerts:   make(map[string]*alert.Hash),
-		validatorState: NewState(log),
+		log:             log.WithField("split", conf.Name),
+		name:            conf.Name,
+		monitor:         monitor,
+		publisher:       publisher,
+		ethereumPool:    ethereumPool,
+		safeClient:      safeClient,
+		address:         conf.Address,
+		contract:        c,
+		accounts:        accounts,
+		controller:      ctr,
+		metrics:         GetMetricsInstance("splitoor_split", monitor),
+		hashAlert:       nil,
+		controllerAlert: alert.NewController(log, ctr.Address()),
 	}, nil
 }
 
@@ -94,14 +92,14 @@ func (g *Group) Start(ctx context.Context) error {
 		}
 	}
 
+	if err := g.setupSplit(ctx); err != nil {
+		return err
+	}
+
 	for _, account := range g.accounts {
 		if err := account.Start(ctx); err != nil {
 			return err
 		}
-	}
-
-	if err := g.setupSplit(ctx); err != nil {
-		return err
 	}
 
 	g.tick(ctx)
@@ -172,12 +170,22 @@ func (g *Group) setupSplit(ctx context.Context) error {
 		return errors.Wrap(err, "failed to create split client")
 	}
 
+	g.contractABI, err = contract.GetSplitMainAbi()
+	if err != nil {
+		return err
+	}
+
+	for _, account := range g.accounts {
+		account.SetClient(g.client)
+		account.SetContract(g.contractABI)
+	}
+
 	accounts := []string{}
 	allocations := []uint32{}
 
 	for _, account := range g.accounts {
 		accounts = append(accounts, account.Address())
-		allocations = append(allocations, uint32(account.Allocation()))
+		allocations = append(allocations, account.Allocation())
 	}
 
 	hashParams := &spl.HashParams{
@@ -192,275 +200,92 @@ func (g *Group) setupSplit(ctx context.Context) error {
 
 	g.hash = hex.EncodeToString(hash)
 
+	g.hashAlert = alert.NewHash(g.log, g.hash)
+
 	return nil
 }
 
 func (g *Group) tick(ctx context.Context) {
-	// collect account balance
-	// collect split balance eth
-	// collect split balance of accounts with monitor (getETHBalance)
-	// check split contract controller
-	// check split contract hash
-
-	// newState := NewState(g.log)
-
-	// var wg sync.WaitGroup
-
-	// if g.beaconchain != nil && time.Since(g.beaconchainLastTick) > g.beaconchain.GetCheckInterval() {
-	// 	wg.Add(1)
-
-	// 	go func() {
-	// 		defer wg.Done()
-	// 		g.tickBeaconchain(ctx, newState)
-	// 	}()
-	// }
-
-	// if g.ethereumPool != nil && g.ethereumPool.HasHealthyBeaconNodes() {
-	// 	wg.Add(1)
-
-	// 	go func() {
-	// 		defer wg.Done()
-	// 		g.tickBeaconAPI(ctx, newState)
-	// 	}()
-	// }
-
-	// wg.Wait()
-
-	// g.mu.Lock()
-	// changedPubkeys := g.validatorState.Merge(newState)
-	// g.mu.Unlock()
-
-	// g.updateAlerts(changedPubkeys)
+	go g.checkController(ctx)
+	go g.checkHash(ctx)
+	go g.gatherMetrics(ctx)
 }
 
-// func (g *Group) tickBeaconAPI(ctx context.Context, state *State) {
-// 	for _, node := range g.ethereumPool.GetHealthyBeaconNodes() {
-// 		validators, err := node.Node().FetchValidators(ctx, "head", nil, g.pubkeys)
-// 		if err != nil {
-// 			g.log.WithError(err).WithField("node", node.Name()).Error("Error fetching validators")
-// 		}
+func (g *Group) checkController(ctx context.Context) {
+	for _, node := range g.ethereumPool.GetHealthyExecutionNodes() {
+		actualController, err := g.client.GetController(ctx, node, g.contractABI)
+		if err != nil {
+			g.log.WithError(err).Error("Error fetching controller")
+		}
 
-// 		for _, validator := range validators {
-// 			g.updateValidatorBeaconAPI(validator, node.Name(), state)
-// 		}
-// 	}
-// }
+		val := float64(0)
+		if *actualController == g.controller.Address() {
+			val = 1
+		}
 
-// func (g *Group) tickBeaconchain(ctx context.Context, state *State) {
-// 	g.log.Debug("Starting beaconchain validators update")
+		g.metrics.UpdateController(val, []string{g.name, node.Name(), g.address, g.controller.Address(), *actualController})
 
-// 	g.beaconchainLastTick = time.Now()
+		shouldAlert := g.controllerAlert.Update(*actualController)
+		if shouldAlert {
+			g.log.WithFields(logrus.Fields{
+				"split_address":       g.address,
+				"expected_controller": g.controller.Address(),
+				"actual_controller":   *actualController,
+			}).Warn("Alerting controller mismatch")
 
-// 	chunkIndex := 0
+			if err := g.publisher.Publish(event.NewController(time.Now(), g.monitor, g.name, g.address, g.controller.Address(), *actualController)); err != nil {
+				g.log.WithError(err).WithFields(logrus.Fields{
+					"split_address":       g.address,
+					"expected_controller": g.controller.Address(),
+					"actual_controller":   *actualController,
+				}).Error("Error publishing controller mismatch alert")
+			}
+		}
+	}
+}
 
-// 	for chunkIndex < len(g.beaconchainChunks) {
-// 		// Process up to max requests per minute
-// 		requestCount := 0
-// 		for requestCount < g.beaconchain.GetMaxRequestsPerMinute() && chunkIndex < len(g.beaconchainChunks) {
-// 			chunk := g.beaconchainChunks[chunkIndex]
+func (g *Group) checkHash(ctx context.Context) {
+	for _, node := range g.ethereumPool.GetHealthyExecutionNodes() {
+		actualHash, err := g.client.GetHash(ctx, node, g.contractABI)
+		if err != nil {
+			g.log.WithError(err).Error("Error fetching hash")
+		}
 
-// 			g.log.WithFields(logrus.Fields{
-// 				"chunk":  chunkIndex,
-// 				"length": len(chunk),
-// 			}).Debug("Processing beaconchain validator pubkeys chunk")
+		actualHashString := hex.EncodeToString(actualHash[:])
 
-// 			err := g.getValidatorsBeaconchain(ctx, chunk, state)
-// 			if err != nil {
-// 				g.log.WithError(err).WithField("pubkeys", chunk).Error("Error updating beaconchain validators")
-// 			}
+		val := float64(0)
+		if actualHashString == g.hash {
+			val = 1
+		}
 
-// 			requestCount++
-// 			chunkIndex++
-// 		}
+		g.metrics.UpdateHash(val, []string{g.name, node.Name(), g.address, g.hash, actualHashString})
 
-// 		// Wait a minute after the last request before continuing
-// 		if requestCount > 0 && chunkIndex < len(g.beaconchainChunks) {
-// 			timer := time.NewTimer(time.Minute)
-// 			select {
-// 			case <-timer.C:
-// 			case <-ctx.Done():
-// 				timer.Stop()
+		shouldAlert := g.hashAlert.Update(actualHashString)
+		if shouldAlert {
+			g.log.WithFields(logrus.Fields{
+				"split_address": g.address,
+				"expected_hash": g.hash,
+				"actual_hash":   actualHashString,
+			}).Warn("Alerting hash mismatch")
 
-// 				return
-// 			}
-// 		}
-// 	}
+			if err := g.publisher.Publish(event.NewHash(time.Now(), g.monitor, g.name, g.address, g.hash, actualHashString)); err != nil {
+				g.log.WithError(err).WithFields(logrus.Fields{
+					"split_address": g.address,
+					"expected_hash": g.hash,
+					"actual_hash":   actualHashString,
+				}).Error("Error publishing hash mismatch alert")
+			}
+		}
+	}
+}
 
-// 	g.log.Debug("Finished beaconchain validators update")
-// }
+func (g *Group) gatherMetrics(ctx context.Context) {
+	for _, node := range g.ethereumPool.GetHealthyExecutionNodes() {
+		balance, err := node.BalanceAt(ctx, g.address)
+		if err != nil {
+			g.log.WithError(err).WithField("node", node.Name()).Error("Error fetching balance")
+		}
 
-// func (g *Group) getValidatorsBeaconchain(ctx context.Context, validators []string, state *State) error {
-// 	if len(validators) == 0 {
-// 		return nil
-// 	}
-
-// 	if len(validators) == 1 {
-// 		response, err := g.beaconchain.GetValidator(ctx, validators[0])
-// 		if err != nil {
-// 			return err
-// 		}
-
-// 		g.updateValidatorBeaconchain(response, state)
-// 	} else {
-// 		response, err := g.beaconchain.GetValidators(ctx, validators)
-// 		if err != nil {
-// 			return err
-// 		}
-
-// 		for _, validator := range response {
-// 			if validator != nil {
-// 				g.updateValidatorBeaconchain(validator, state)
-// 			}
-// 		}
-// 	}
-
-// 	return nil
-// }
-
-// func (g *Group) updateValidatorBeaconchain(data *beaconchain.Validator, state *State) {
-// 	if data == nil {
-// 		return
-// 	}
-
-// 	source := "beaconcha.in"
-// 	labels := []string{
-// 		g.name,
-// 		data.Pubkey,
-// 		source,
-// 	}
-
-// 	g.metrics.UpdateBalance(float64(data.Balance), labels)
-
-// 	status := BeaconchainToMetricsStatus(data.Status)
-
-// 	credentialsCode, err := GetWithdrawalCredentialsCode(data.WithdrawalCredentials)
-// 	if err != nil {
-// 		g.log.WithError(err).WithField("credentials", data.WithdrawalCredentials).Error("Error parsing withdrawal credentials")
-// 	}
-
-// 	code := float64(0)
-// 	if credentialsCode != nil {
-// 		code = float64(*credentialsCode)
-
-// 		state.UpdateValidator(source, data.Pubkey, uint64(data.Balance), status, *credentialsCode)
-// 	}
-
-// 	g.metrics.UpdateCredentialsCode(code, labels)
-// 	g.metrics.UpdateLastAttestationSlot(float64(data.LastAttestationSlot), labels)
-// 	g.metrics.UpdateTotalWithdrawals(float64(data.TotalWithdrawals), labels)
-// 	g.metrics.UpdateStatus(status, labels)
-// }
-
-// func (g *Group) updateValidatorBeaconAPI(data *v1.Validator, source string, state *State) {
-// 	if data == nil {
-// 		return
-// 	}
-
-// 	val := data.Validator
-
-// 	if val == nil {
-// 		return
-// 	}
-
-// 	labels := []string{
-// 		g.name,
-// 		val.PublicKey.String(),
-// 		source,
-// 	}
-
-// 	g.metrics.UpdateBalance(float64(data.Balance), labels)
-
-// 	status := BeaconAPIToMetricsStatus(data.Status, val.Slashed)
-
-// 	credentialsCode, err := GetWithdrawalCredentialsCode(hex.EncodeToString(val.WithdrawalCredentials))
-// 	if err != nil {
-// 		g.log.WithError(err).WithField("credentials", val.WithdrawalCredentials).Error("Error parsing withdrawal credentials")
-// 	}
-
-// 	code := float64(0)
-
-// 	if credentialsCode != nil {
-// 		state.UpdateValidator(source, val.PublicKey.String(), uint64(data.Balance), status, *credentialsCode)
-
-// 		code = float64(*credentialsCode)
-// 	}
-
-// 	g.metrics.UpdateCredentialsCode(code, labels)
-// 	g.metrics.UpdateCredentialsCode(code, labels)
-// 	g.metrics.UpdateStatus(status, labels)
-// }
-
-// func (g *Group) updateAlerts(changedPubkeys []string) {
-// 	g.mu.Lock()
-// 	defer g.mu.Unlock()
-
-// 	for _, pubkey := range changedPubkeys {
-// 		if _, exists := g.balanceAlerts[pubkey]; !exists {
-// 			g.balanceAlerts[pubkey] = alert.NewBalance(g.log, MinBalance)
-// 		}
-
-// 		if _, exists := g.statusAlerts[pubkey]; !exists {
-// 			g.statusAlerts[pubkey] = alert.NewStatus(g.log, ExpectedStatuses)
-// 		}
-
-// 		if _, exists := g.withdrawalCredentialsAlerts[pubkey]; !exists {
-// 			g.withdrawalCredentialsAlerts[pubkey] = alert.NewWithdrawalCredentials(g.log, WithdrawalCredentialsCodes)
-// 		}
-
-// 		balanceAlert := g.balanceAlerts[pubkey]
-// 		statusAlert := g.statusAlerts[pubkey]
-// 		withdrawalCredentialsAlert := g.withdrawalCredentialsAlerts[pubkey]
-
-// 		balances := make([]uint64, 0, len(g.validatorState.Validators[pubkey].Sources))
-// 		statuses := make([]string, 0, len(g.validatorState.Validators[pubkey].Sources))
-// 		codes := make([]int64, 0, len(g.validatorState.Validators[pubkey].Sources))
-
-// 		for _, source := range g.validatorState.Validators[pubkey].Sources {
-// 			balances = append(balances, source.Balance)
-// 			statuses = append(statuses, string(source.Status))
-// 			codes = append(codes, source.WithdrawalCredentialsCode)
-// 		}
-
-// 		if shouldAlert, balance := balanceAlert.Update(balances); shouldAlert {
-// 			g.log.WithField("balance", *balance).WithField("pubkey", pubkey).Warn("Alerting min balance")
-
-// 			if err := g.publisher.Publish(validator.NewMinBalance(time.Now(), *balance, pubkey, g.name, g.monitor)); err != nil {
-// 				g.log.WithError(err).WithField("pubkey", pubkey).Error("Error publishing min balance alert")
-// 			}
-// 		}
-
-// 		if shouldAlert, alertingStatus := statusAlert.Update(statuses); shouldAlert {
-// 			g.log.WithField("status", *alertingStatus).WithField("pubkey", pubkey).Warn("Alerting status")
-
-// 			if err := g.publisher.Publish(validator.NewStatus(time.Now(), *alertingStatus, pubkey, g.name, g.monitor)); err != nil {
-// 				g.log.WithError(err).WithField("pubkey", pubkey).WithField("status", *alertingStatus).Error("Error publishing status alert")
-// 			}
-// 		}
-
-// 		if shouldAlert, alertingCredential := withdrawalCredentialsAlert.Update(codes); shouldAlert {
-// 			g.log.WithField("credential", *alertingCredential).WithField("pubkey", pubkey).Warn("Alerting withdrawal credentials")
-
-// 			if err := g.publisher.Publish(validator.NewWithdrawalCredentials(time.Now(), *alertingCredential, pubkey, g.name, g.monitor)); err != nil {
-// 				g.log.WithError(err).WithField("pubkey", pubkey).WithField("credential", *alertingCredential).Error("Error publishing withdrawal credentials alert")
-// 			}
-// 		}
-// 	}
-// }
-
-// func GetWithdrawalCredentialsCode(withdrawalCredentials string) (*int64, error) {
-// 	if strings.HasPrefix(withdrawalCredentials, "0x") {
-// 		i64, err := strconv.ParseInt(withdrawalCredentials[:4], 0, 64)
-// 		if err != nil {
-// 			return nil, err
-// 		}
-
-// 		return &i64, nil
-// 	}
-
-// 	i64, err := strconv.ParseInt(withdrawalCredentials[:2], 0, 64)
-// 	if err != nil {
-// 		return nil, err
-// 	}
-
-// 	return &i64, nil
-// }
+		g.metrics.UpdateBalance(float64(balance.Uint64()), []string{g.name, node.Name(), g.address})
+	}
+}

@@ -6,17 +6,28 @@ import (
 )
 
 type Controller struct {
-	Timestamp    time.Time
-	SplitAddress string
-	SplitName    string
-	Controller   string
-	Group        string
-	Monitor      string
+	Timestamp          time.Time
+	SplitAddress       string
+	ExpectedController string
+	ActualController   string
+	Group              string
+	Monitor            string
 }
 
 const (
 	ControllerType = "split_controller"
 )
+
+func NewController(timestamp time.Time, monitor, group, splitAddress, expectedController, actualController string) *Controller {
+	return &Controller{
+		Timestamp:          timestamp,
+		SplitAddress:       splitAddress,
+		ExpectedController: expectedController,
+		ActualController:   actualController,
+		Group:              group,
+		Monitor:            monitor,
+	}
+}
 
 func (v *Controller) GetType() string {
 	return ControllerType
@@ -39,7 +50,7 @@ func (v *Controller) GetDescription() string {
 Timestamp: %s
 Monitor: %s
 Group: %s
-Split Name: %s
 Split Address: %s
-Controller: %s`, v.Timestamp.UTC().Format("2006-01-02 15:04:05 UTC"), v.Monitor, v.Group, v.SplitName, v.SplitAddress, v.Controller)
+Expected Controller address: %s
+Actual Controller address: %s`, v.Timestamp.UTC().Format("2006-01-02 15:04:05 UTC"), v.Monitor, v.Group, v.SplitAddress, v.ExpectedController, v.ActualController)
 }

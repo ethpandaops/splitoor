@@ -14,7 +14,7 @@ type Metrics struct {
 	transactionRecoveryNext      *prometheus.GaugeVec
 	transactionRecoveryExists    *prometheus.GaugeVec
 	transactionRecoveryPreSigned *prometheus.GaugeVec
-	transactionRecoveryInvalid   *prometheus.GaugeVec
+	transactionRecoveryValid     *prometheus.GaugeVec
 }
 
 var (
@@ -63,11 +63,11 @@ func GetMetricsInstance(namespace, monitor string) *Metrics {
 				},
 				[]string{"group", "controller", "source", "required", "submitted"},
 			),
-			transactionRecoveryInvalid: prometheus.NewGaugeVec(
+			transactionRecoveryValid: prometheus.NewGaugeVec(
 				prometheus.GaugeOpts{
 					Namespace:   namespace,
-					Name:        "transaction_recovery_invalid",
-					Help:        "Whether the recovery transaction is invalid.",
+					Name:        "transaction_recovery_valid",
+					Help:        "Whether the recovery transaction is valid.",
 					ConstLabels: constLabels,
 				},
 				[]string{"group", "controller", "source"},
@@ -78,7 +78,7 @@ func GetMetricsInstance(namespace, monitor string) *Metrics {
 		prometheus.MustRegister(metricsInstance.transactionRecoveryNext)
 		prometheus.MustRegister(metricsInstance.transactionRecoveryExists)
 		prometheus.MustRegister(metricsInstance.transactionRecoveryPreSigned)
-		prometheus.MustRegister(metricsInstance.transactionRecoveryInvalid)
+		prometheus.MustRegister(metricsInstance.transactionRecoveryValid)
 	})
 
 	return metricsInstance
@@ -100,6 +100,6 @@ func (m Metrics) UpdateTransactionRecoveryPreSigned(transactionRecoveryPreSigned
 	m.transactionRecoveryPreSigned.WithLabelValues(labels...).Set(transactionRecoveryPreSigned)
 }
 
-func (m Metrics) UpdateTransactionRecoveryInvalid(transactionRecoveryInvalid float64, labels []string) {
-	m.transactionRecoveryInvalid.WithLabelValues(labels...).Set(transactionRecoveryInvalid)
+func (m Metrics) UpdateTransactionRecoveryValid(transactionRecoveryValid float64, labels []string) {
+	m.transactionRecoveryValid.WithLabelValues(labels...).Set(transactionRecoveryValid)
 }
