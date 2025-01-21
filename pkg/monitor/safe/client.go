@@ -26,7 +26,7 @@ type client struct {
 	log     logrus.FieldLogger
 	baseURL string
 	client  *http.Client
-	metrics Metrics
+	metrics *Metrics
 
 	chainID string
 	mu      sync.Mutex
@@ -38,7 +38,7 @@ func NewClient(ctx context.Context, log logrus.FieldLogger, monitor string, conf
 		log:     log.WithField("module", "safe"),
 		baseURL: conf.Endpoint,
 		client:  &http.Client{},
-		metrics: NewMetrics("splitoor_safe", monitor),
+		metrics: GetMetricsInstance("splitoor_safe", monitor),
 	}, nil
 }
 

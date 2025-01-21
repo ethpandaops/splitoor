@@ -22,6 +22,10 @@ type SES struct {
 }
 
 func NewSES(ctx context.Context, log logrus.FieldLogger, monitor, name string, config *Config) (*SES, error) {
+	if config == nil {
+		return nil, fmt.Errorf("config is required")
+	}
+
 	sess, err := session.NewSession(&aws.Config{})
 	if err != nil {
 		return nil, fmt.Errorf("failed to create AWS session: %w", err)

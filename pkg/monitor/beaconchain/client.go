@@ -29,7 +29,7 @@ type client struct {
 	batchSize            int
 	maxRequestsPerMinute int
 	checkInterval        time.Duration
-	metrics              Metrics
+	metrics              *Metrics
 }
 
 // NewClient creates a new beaconchain instance
@@ -41,7 +41,7 @@ func NewClient(ctx context.Context, log logrus.FieldLogger, monitor string, conf
 		batchSize:            conf.BatchSize,
 		maxRequestsPerMinute: conf.MaxRequestsPerMinute,
 		checkInterval:        conf.CheckInterval,
-		metrics:              NewMetrics("splitoor_beaconchain", monitor),
+		metrics:              GetMetricsInstance("splitoor_beaconchain", monitor),
 	}, nil
 }
 

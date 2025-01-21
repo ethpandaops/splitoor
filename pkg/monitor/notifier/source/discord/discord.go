@@ -15,19 +15,18 @@ import (
 const SourceType = "discord"
 
 type Discord struct {
-	log        logrus.FieldLogger
-	name       string
-	sourceName string
-	config     *Config
-	metrics    *Metrics
+	log     logrus.FieldLogger
+	name    string
+	config  *Config
+	metrics *Metrics
 }
 
-func NewDiscord(ctx context.Context, log logrus.FieldLogger, monitor, sourceName string, config *Config) (*Discord, error) {
+func NewDiscord(ctx context.Context, log logrus.FieldLogger, monitor, name string, config *Config) (*Discord, error) {
 	return &Discord{
-		log:        log.WithField("source", sourceName),
-		sourceName: sourceName,
-		config:     config,
-		metrics:    GetMetricsInstance("splitoor_notifier_discord", monitor),
+		log:     log.WithField("source", name),
+		name:    name,
+		config:  config,
+		metrics: GetMetricsInstance("splitoor_notifier_discord", monitor),
 	}, nil
 }
 
@@ -57,9 +56,9 @@ func (c *Discord) Publish(ctx context.Context, e event.Event) error {
 
 	defer func() {
 		if errorType != "" {
-			c.metrics.IncErrors(e.GetGroup(), c.sourceName, c.GetType(), errorType, statusCode)
+			c.metrics.IncErrors(e.GetGroup(), c.name, c.GetType(), errorType, statusCode)
 		} else {
-			c.metrics.IncMessagesPublished(e.GetGroup(), c.sourceName, c.GetType())
+			c.metrics.IncMessagesPublished(e.GetGroup(), c.name, c.GetType())
 		}
 	}()
 

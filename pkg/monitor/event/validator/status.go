@@ -17,7 +17,7 @@ const (
 	StatusType = "validator_status"
 )
 
-func NewStatus(timestamp time.Time, status string, pubkey, group, monitor string) *Status {
+func NewStatus(timestamp time.Time, status, pubkey, group, monitor string) *Status {
 	return &Status{
 		Timestamp: timestamp,
 		Pubkey:    pubkey,

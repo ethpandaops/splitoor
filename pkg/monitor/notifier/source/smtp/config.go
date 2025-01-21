@@ -49,5 +49,9 @@ func (c *Config) Validate() error {
 		return errors.New("to is required")
 	}
 
+	if c.Port == 0 {
+		return errors.New("port is required")
+	}
+
 	return nil
 }
