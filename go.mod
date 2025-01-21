@@ -12,10 +12,12 @@ require (
 	github.com/aws/aws-sdk-go v1.55.5
 	github.com/cenkalti/backoff/v4 v4.3.0
 	github.com/creasty/defaults v1.7.0
+	github.com/ethereum/go-ethereum v1.14.10
 	github.com/ethpandaops/beacon v0.45.0
 	github.com/ethpandaops/ethwallclock v0.3.0
 	github.com/go-co-op/gocron v1.37.0
 	github.com/go-telegram/bot v1.13.3
+	github.com/holiman/uint256 v1.3.2
 	github.com/pkg/errors v0.9.1
 	github.com/prometheus/client_golang v1.20.5
 	github.com/sirupsen/logrus v1.9.3
@@ -37,7 +39,6 @@ require (
 	github.com/deckarep/golang-set/v2 v2.6.0 // indirect
 	github.com/decred/dcrd/dcrec/secp256k1/v4 v4.3.0 // indirect
 	github.com/ethereum/c-kzg-4844/bindings/go v0.0.0-20230126171313-363c7d7593b4 // indirect
-	github.com/ethereum/go-ethereum v1.14.10 // indirect
 	github.com/fatih/color v1.16.0 // indirect
 	github.com/ferranbt/fastssz v0.1.3 // indirect
 	github.com/go-logr/logr v1.2.4 // indirect
@@ -49,7 +50,6 @@ require (
 	github.com/goware/breaker v0.1.2 // indirect
 	github.com/goware/logger v0.3.0 // indirect
 	github.com/goware/superr v0.0.2 // indirect
-	github.com/holiman/uint256 v1.3.1 // indirect
 	github.com/huandu/go-clone v1.6.0 // indirect
 	github.com/inconshreveable/mousetrap v1.1.0 // indirect
 	github.com/jmespath/go-jmespath v0.4.0 // indirect

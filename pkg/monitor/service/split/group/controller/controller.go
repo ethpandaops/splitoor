@@ -6,8 +6,10 @@ import (
 
 	"github.com/creasty/defaults"
 	"github.com/ethpandaops/splitoor/pkg/ethereum"
-	"github.com/ethpandaops/splitoor/pkg/monitor/service/split/controller/eoa"
-	"github.com/ethpandaops/splitoor/pkg/monitor/service/split/controller/safe"
+	"github.com/ethpandaops/splitoor/pkg/monitor/notifier"
+	s "github.com/ethpandaops/splitoor/pkg/monitor/safe"
+	"github.com/ethpandaops/splitoor/pkg/monitor/service/split/group/controller/eoa"
+	"github.com/ethpandaops/splitoor/pkg/monitor/service/split/group/controller/safe"
 
 	"github.com/sirupsen/logrus"
 )
@@ -17,9 +19,10 @@ type Controller interface {
 	Stop(ctx context.Context) error
 	Type() string
 	Name() string
+	Address() string
 }
 
-func NewController(ctx context.Context, log logrus.FieldLogger, name string, controllerType ControllerType, config *RawMessage, ethereumPool *ethereum.Pool) (Controller, error) {
+func NewController(ctx context.Context, log logrus.FieldLogger, monitor, name string, controllerType ControllerType, config *RawMessage, splitAddress, splitsContractAddress string, ethereumPool *ethereum.Pool, safeClient s.Client, publisher *notifier.Publisher) (Controller, error) {
 	if controllerType == ControllerTypeUnknown {
 		return nil, errors.New("controller type is required")
 	}
@@ -52,7 +55,7 @@ func NewController(ctx context.Context, log logrus.FieldLogger, name string, con
 			return nil, err
 		}
 
-		return safe.New(ctx, log, name, conf, ethereumPool)
+		return safe.New(ctx, log, monitor, name, conf, splitAddress, splitsContractAddress, ethereumPool, safeClient, publisher)
 	}
 
 	return nil, errors.New("controller type is not supported")

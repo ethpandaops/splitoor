@@ -104,6 +104,11 @@ func (g *Group) Start(ctx context.Context) {
 		}
 	}
 }
+
+func (g *Group) Stop(ctx context.Context) error {
+	return nil
+}
+
 func (g *Group) tick(ctx context.Context) {
 	newState := NewState(g.log)
 

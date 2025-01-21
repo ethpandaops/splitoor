@@ -4,7 +4,9 @@ import (
 	"context"
 
 	"github.com/ethpandaops/splitoor/pkg/ethereum"
+	"github.com/ethpandaops/splitoor/pkg/monitor/beaconchain"
 	"github.com/ethpandaops/splitoor/pkg/monitor/notifier"
+	"github.com/ethpandaops/splitoor/pkg/monitor/safe"
 	"github.com/ethpandaops/splitoor/pkg/monitor/service/split"
 	"github.com/ethpandaops/splitoor/pkg/monitor/service/validator"
 	"github.com/sirupsen/logrus"
@@ -23,17 +25,17 @@ const (
 	ServiceTypeValidator Type = validator.ServiceType
 )
 
-func CreateServices(ctx context.Context, log logrus.FieldLogger, monitor string, cfg *Config, ethereumPool *ethereum.Pool, publisher *notifier.Publisher) ([]Service, error) {
+func CreateServices(ctx context.Context, log logrus.FieldLogger, monitor string, cfg *Config, ethereumPool *ethereum.Pool, publisher *notifier.Publisher, beaconchainClient beaconchain.Client, safeClient safe.Client) ([]Service, error) {
 	services := []Service{}
 
-	sp, err := split.NewService(ctx, log, monitor, &cfg.Split, ethereumPool, publisher)
+	sp, err := split.NewService(ctx, log, monitor, &cfg.Split, ethereumPool, publisher, safeClient)
 	if err != nil {
 		return nil, err
 	}
 
 	services = append(services, sp)
 
-	vp, err := validator.NewService(ctx, log, monitor, &cfg.Validator, ethereumPool, publisher)
+	vp, err := validator.NewService(ctx, log, monitor, &cfg.Validator, ethereumPool, publisher, beaconchainClient)
 	if err != nil {
 		return nil, err
 	}

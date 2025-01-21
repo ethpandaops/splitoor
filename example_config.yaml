@@ -15,6 +15,21 @@ ethereum:
       nodeHeaders:
         Authorization: "Basic base64encodedcreds"
 
+
+# connects to beaconchain to get validator status
+beaconchain:
+  enabled: true
+  apiKey: "1234567890" # optional
+  checkInterval: 1h
+  # endpoint: "https://beaconcha.in"
+  # batchSize: 50
+  # maxRequestsPerMinute: 10
+
+# connects to safe to get tx status
+safe:
+  enabled: true
+  endpoint: "https://safe-client.safe.global"
+
 services:
   split:
     splits:
@@ -34,16 +49,9 @@ services:
           #   address: "0x0000000000000000000000000000000000000000"
           type: "safe"
           config:
-            address: "0x0000000000000000000000000000000000000000"
-            minSignatures: 3
+            address: "0x0000000000000000000000000000000000000000" # safe address
+            recoveryAddress: "0x0000000000000000000000000000000000000000" # address of the split update for recovery state
   validator:
-    beaconchain:
-      enabled: true
-      apiKey: "1234567890" # optional
-      checkInterval: 1h
-      # endpoint: "https://beaconcha.in"
-      # batchSize: 50
-      # maxRequestsPerMinute: 10
     groups:
       - name: "someone-1"
         pubkeys:

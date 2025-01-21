@@ -4,7 +4,9 @@ import (
 	"fmt"
 
 	"github.com/ethpandaops/splitoor/pkg/ethereum"
+	"github.com/ethpandaops/splitoor/pkg/monitor/beaconchain"
 	"github.com/ethpandaops/splitoor/pkg/monitor/notifier"
+	"github.com/ethpandaops/splitoor/pkg/monitor/safe"
 	"github.com/ethpandaops/splitoor/pkg/monitor/service"
 )
 
@@ -23,6 +25,10 @@ type Config struct {
 	Ethereum ethereum.Config `yaml:"ethereum"`
 	// Notifier is the list of notifiers to run.
 	Notifier notifier.Config `yaml:"notifier"`
+	// Beaconchain is the beaconchain configuration.
+	Beaconchain beaconchain.Config `yaml:"beaconchain"`
+	// Safe is the safe configuration.
+	Safe safe.Config `yaml:"safe"`
 }
 
 func (c *Config) Validate() error {
@@ -35,6 +41,14 @@ func (c *Config) Validate() error {
 	}
 
 	if err := c.Ethereum.Validate(); err != nil {
+		return err
+	}
+
+	if err := c.Beaconchain.Validate(); err != nil {
+		return err
+	}
+
+	if err := c.Safe.Validate(); err != nil {
 		return err
 	}
 

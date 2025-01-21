@@ -11,7 +11,9 @@ import (
 	_ "net/http/pprof"
 
 	"github.com/ethpandaops/splitoor/pkg/ethereum"
+	"github.com/ethpandaops/splitoor/pkg/monitor/beaconchain"
 	"github.com/ethpandaops/splitoor/pkg/monitor/notifier"
+	"github.com/ethpandaops/splitoor/pkg/monitor/safe"
 	"github.com/ethpandaops/splitoor/pkg/monitor/service"
 	"github.com/ethpandaops/splitoor/pkg/observability"
 	"github.com/sirupsen/logrus"
@@ -29,6 +31,9 @@ type Server struct {
 	pprofServer   *http.Server
 
 	ethereumPool *ethereum.Pool
+
+	beaconchainClient beaconchain.Client
+	safeClient        safe.Client
 }
 
 func NewServer(ctx context.Context, log logrus.FieldLogger, conf *Config) (*Server, error) {
@@ -43,17 +48,35 @@ func NewServer(ctx context.Context, log logrus.FieldLogger, conf *Config) (*Serv
 		return nil, err
 	}
 
-	services, err := service.CreateServices(ctx, log, conf.Name, &conf.Services, ethereumPool, publisher)
+	var beaconchainClient beaconchain.Client
+	if conf.Beaconchain.Enabled {
+		beaconchainClient, err = beaconchain.NewClient(ctx, log, conf.Name, &conf.Beaconchain)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	var safeClient safe.Client
+	if conf.Safe.Enabled {
+		safeClient, err = safe.NewClient(ctx, log, conf.Name, &conf.Safe)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	services, err := service.CreateServices(ctx, log, conf.Name, &conf.Services, ethereumPool, publisher, beaconchainClient, safeClient)
 	if err != nil {
 		return nil, err
 	}
 
 	return &Server{
-		config:       conf,
-		log:          log.WithField("component", "server"),
-		services:     services,
-		publisher:    publisher,
-		ethereumPool: ethereumPool,
+		config:            conf,
+		log:               log.WithField("component", "server"),
+		services:          services,
+		publisher:         publisher,
+		ethereumPool:      ethereumPool,
+		beaconchainClient: beaconchainClient,
+		safeClient:        safeClient,
 	}, nil
 }
 

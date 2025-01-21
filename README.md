@@ -73,3 +73,43 @@ splitoor split status \
   --contract <CONTRACT_ADDRESS> # Can omit if using mainnet/sepolia/holesky \
   --split <SPLIT_ADDRESS>
 ```
+
+#### Distribute ETH
+
+Distribute ETH to the split's recipients.
+
+```bash
+splitoor split distribute \
+  --el-rpc-url http://localhost:8545 \
+  --deployer-address <DEPLOYER_ADDRESS> \
+  --deployer-private-key <DEPLOYER_PRIVATE_KEY> \
+  --contract <CONTRACT_ADDRESS> # Can omit if using mainnet/sepolia/holesky \
+  --split <SPLIT_ADDRESS> \
+  --recipients <RECIPIENT_1_ADDRESS>,<RECIPIENT_2_ADDRESS> \
+  --percentages 600000,400000 # 60%, 40%
+```
+
+#### Get ETH balance
+
+Get the distributed ETH balance of an address on the splits contract. This can be from multiple splits.
+
+```bash
+splitoor split balance \
+  --el-rpc-url http://localhost:8545 \
+  --contract <CONTRACT_ADDRESS> # Can omit if using mainnet/sepolia/holesky \
+  --address <ADDRESS>
+```
+
+#### Withdraw
+
+Withdraw from the splits contract.
+
+```bash
+splitoor split withdraw \
+  --el-rpc-url http://localhost:8545 \
+  --private-key <DEPLOYER_PRIVATE_KEY> \
+  --contract <CONTRACT_ADDRESS> # Can omit if using mainnet/sepolia/holesky \
+  --address <ADDRESS>
+  --withdraw-eth # omit if only withdrawing ERC20s \
+  # --tokens <TOKEN_1_ADDRESS>,<TOKEN_2_ADDRESS> # optional, comma separated list of tokens addresses to withdraw
+```

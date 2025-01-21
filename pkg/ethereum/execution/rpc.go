@@ -51,6 +51,22 @@ func (n *Node) ChainID(ctx context.Context) (*big.Int, error) {
 	return chainID, nil
 }
 
+func (n *Node) BalanceAt(ctx context.Context, address string) (*big.Int, error) {
+	blockNumber, err := n.BlockNumber(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	var balance *big.Int
+
+	_, err = n.rpc.Do(ctx, ethrpc.BalanceAt(common.HexToAddress(address), big.NewInt(int64(*blockNumber))).Into(&balance))
+	if err != nil {
+		return nil, err
+	}
+
+	return balance, nil
+}
+
 func (n *Node) SignTransaction(ctx context.Context, tx *types.Transaction, key *ecdsa.PrivateKey) (*types.Transaction, error) {
 	chainID, err := n.ChainID(ctx)
 	if err != nil {

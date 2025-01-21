@@ -7,7 +7,8 @@ import (
 type Config struct {
 	Name       string `yaml:"name"`
 	Address    string `yaml:"address"`
-	Allocation int64  `yaml:"allocation"`
+	Allocation uint32 `yaml:"allocation"`
+	Monitor    bool   `yaml:"monitor" default:"false"`
 }
 
 func (c *Config) Validate() error {
