@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/ecdsa"
 	"errors"
+	"math"
 	"math/big"
 
 	"github.com/0xsequence/ethkit/ethrpc"
@@ -24,6 +25,14 @@ func (n *Node) BlockNumber(ctx context.Context) (*uint64, error) {
 	return &blockNumber, nil
 }
 
+func convertBlockNumber(blockNumber uint64) int64 {
+	if blockNumber > uint64(math.MaxInt64) {
+		return int64(math.MaxInt64)
+	}
+
+	return int64(blockNumber)
+}
+
 func (n *Node) NonceAt(ctx context.Context, address string) (*uint64, error) {
 	blockNumber, err := n.BlockNumber(ctx)
 	if err != nil {
@@ -32,7 +41,7 @@ func (n *Node) NonceAt(ctx context.Context, address string) (*uint64, error) {
 
 	var nonce uint64
 
-	_, err = n.rpc.Do(ctx, ethrpc.NonceAt(common.HexToAddress(address), big.NewInt(int64(*blockNumber))).Into(&nonce))
+	_, err = n.rpc.Do(ctx, ethrpc.NonceAt(common.HexToAddress(address), big.NewInt(convertBlockNumber(*blockNumber))).Into(&nonce))
 	if err != nil {
 		return nil, err
 	}
@@ -59,7 +68,7 @@ func (n *Node) BalanceAt(ctx context.Context, address string) (*big.Int, error) 
 
 	var balance *big.Int
 
-	_, err = n.rpc.Do(ctx, ethrpc.BalanceAt(common.HexToAddress(address), big.NewInt(int64(*blockNumber))).Into(&balance))
+	_, err = n.rpc.Do(ctx, ethrpc.BalanceAt(common.HexToAddress(address), big.NewInt(convertBlockNumber(*blockNumber))).Into(&balance))
 	if err != nil {
 		return nil, err
 	}

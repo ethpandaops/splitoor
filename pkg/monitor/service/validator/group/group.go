@@ -250,6 +250,7 @@ func (g *Group) updateValidatorBeaconchain(data *beaconchain.Validator, state *S
 	if credentialsCode != nil {
 		code = float64(*credentialsCode)
 
+		//nolint:gosec // fine to convert as balance is always >= 0
 		state.UpdateValidator(source, data.Pubkey, uint64(data.Balance), status, *credentialsCode)
 	}
 
