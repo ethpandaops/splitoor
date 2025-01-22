@@ -1,0 +1,92 @@
+logging: "info" # panic,fatal,warn,info,debug,trace
+name: "monitor-1"
+metricsAddr: ":9090"
+# pprofAddr: ":6060" # optional. if supplied it enables pprof server
+
+ethereum:
+  execution:
+    - name: "execution-1" 
+      nodeAddress: "http://localhost:8545"
+      nodeHeaders:
+        Authorization: "Basic base64encodedcreds"
+  beacon:
+    - name: "beacon-1"
+      nodeAddress: "http://localhost:5052"
+      nodeHeaders:
+        Authorization: "Basic base64encodedcreds"
+
+
+# connects to beaconchain to get validator status
+beaconchain:
+  enabled: true
+  apiKey: "1234567890" # optional
+  checkInterval: 1h
+  # endpoint: "https://beaconcha.in"
+  # batchSize: 50
+  # maxRequestsPerMinute: 10
+
+# connects to safe to get tx status
+safe:
+  enabled: true
+  endpoint: "https://safe-client.safe.global"
+
+services:
+  split:
+    splits:
+      - name: "someone-1"
+        address: "0x0000000000000000000000000000000000000000" # split address
+        contract: "0x0000000000000000000000000000000000000000" # 0xSplits v1 contract address, not needed for mainnet, holesky and sepolia
+        accounts:
+          - name: "account-1"
+            address: "0x0000000000000000000000000000000000000000"
+            allocation: 999999 # 99.9999%
+          - name: "account-2" # typically the split address
+            address: "0x0000000000000000000000000000000000000000"
+            allocation: 1 # 0.0001%
+        controller:
+          # type: "eoa"
+          # config:
+          #   address: "0x0000000000000000000000000000000000000000"
+          type: "safe"
+          config:
+            address: "0x0000000000000000000000000000000000000000" # safe address
+            recoveryAddress: "0x0000000000000000000000000000000000000000" # address of the split update for recovery state
+  validator:
+    groups:
+      - name: "someone-1"
+        pubkeys:
+          - "0x000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000"
+          - "0x000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000"
+          - "0x000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000"
+
+notifier:
+  sources:
+    - type: "discord"
+      name: "discord"
+      config:
+        webhook: "https://discord.com/api/webhooks/your-webhook-url"
+    - type: "telegram"
+      name: "telegram"
+      config:
+        botToken: "your-bot-token"
+        chatId: "your-chat-id"
+    - type: "smtp"
+      name: "smtp"
+      config:
+        host: "localhost"
+        port: 25
+        # tls: false
+        # insecureSkipVerify: false
+        # username: "your-username"
+        # password: "your-password"
+        from: "your-from-email"
+        to:
+          - "your-to-email"
+    - type: "ses"
+      name: "ses"
+      config:
+        # AWS credentials and region will be automatically pulled from the environment variables
+        # eg. AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, AWS_SESSION_TOKEN, AWS_REGION
+        from: "your-from-email"
+        to:
+          - "your-to-email"

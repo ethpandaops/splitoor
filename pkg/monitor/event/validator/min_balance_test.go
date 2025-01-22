@@ -1,0 +1,114 @@
+package validator_test
+
+import (
+	"testing"
+	"time"
+
+	"github.com/stretchr/testify/assert"
+
+	"github.com/ethpandaops/splitoor/pkg/monitor/event"
+	"github.com/ethpandaops/splitoor/pkg/monitor/event/validator"
+)
+
+func TestMinBalance(t *testing.T) {
+	tests := []struct {
+		name      string
+		timestamp time.Time
+		balance   uint64
+		pubkey    string
+		group     string
+		monitor   string
+		wantTitle string
+		wantDesc  string
+	}{
+		{
+			name:      "basic event",
+			timestamp: time.Date(2024, 1, 1, 12, 0, 0, 0, time.UTC),
+			balance:   16_000_000_000_000_000_000, // 16 ETH
+			pubkey:    "0x123",
+			group:     "test_group",
+			monitor:   "test_monitor",
+			wantTitle: "[test_monitor] test_group validator has low balance",
+			wantDesc: `
+Timestamp: 2024-01-01 12:00:00 UTC
+Monitor: test_monitor
+Group: test_group
+Pubkey: 0x123
+Balance: 16.0000 ETH`,
+		},
+		{
+			name:      "very low balance",
+			timestamp: time.Date(2024, 1, 1, 12, 0, 0, 0, time.UTC),
+			balance:   1_000_000_000_000_000_000, // 1 ETH
+			pubkey:    "0x123",
+			group:     "test_group",
+			monitor:   "test_monitor",
+			wantTitle: "[test_monitor] test_group validator has low balance",
+			wantDesc: `
+Timestamp: 2024-01-01 12:00:00 UTC
+Monitor: test_monitor
+Group: test_group
+Pubkey: 0x123
+Balance: 1.0000 ETH`,
+		},
+		{
+			name:      "fractional balance",
+			timestamp: time.Date(2024, 1, 1, 12, 0, 0, 0, time.UTC),
+			balance:   16_500_000_000_000_000_000, // 16.5 ETH
+			pubkey:    "0x123",
+			group:     "test_group",
+			monitor:   "test_monitor",
+			wantTitle: "[test_monitor] test_group validator has low balance",
+			wantDesc: `
+Timestamp: 2024-01-01 12:00:00 UTC
+Monitor: test_monitor
+Group: test_group
+Pubkey: 0x123
+Balance: 16.5000 ETH`,
+		},
+		{
+			name:      "special characters",
+			timestamp: time.Date(2024, 1, 1, 12, 0, 0, 0, time.UTC),
+			balance:   16_000_000_000_000_000_000, // 16 ETH
+			pubkey:    "0x123!@#",
+			group:     "test$%^",
+			monitor:   "test&*()",
+			wantTitle: "[test&*()] test$%^ validator has low balance",
+			wantDesc: `
+Timestamp: 2024-01-01 12:00:00 UTC
+Monitor: test&*()
+Group: test$%^
+Pubkey: 0x123!@#
+Balance: 16.0000 ETH`,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			evt := validator.NewMinBalance(
+				tt.timestamp,
+				tt.balance,
+				tt.pubkey,
+				tt.group,
+				tt.monitor,
+			)
+
+			// Verify it implements Event interface
+			var _ event.Event = evt
+
+			// Test type constant
+			assert.Equal(t, validator.MinBalanceType, evt.GetType())
+
+			// Test getters
+			assert.Equal(t, tt.monitor, evt.GetMonitor())
+			assert.Equal(t, tt.group, evt.GetGroup())
+			assert.Equal(t, tt.wantTitle, evt.GetTitle())
+			assert.Equal(t, tt.wantDesc, evt.GetDescription())
+
+			// Test fields
+			assert.Equal(t, tt.timestamp, evt.Timestamp)
+			assert.Equal(t, tt.pubkey, evt.Pubkey)
+			assert.Equal(t, tt.balance, evt.Balance)
+		})
+	}
+}

@@ -1,0 +1,43 @@
+package eoa
+
+import (
+	"testing"
+
+	"github.com/stretchr/testify/assert"
+)
+
+func TestConfigValidate(t *testing.T) {
+	tests := []struct {
+		name        string
+		config      *Config
+		expectError bool
+	}{
+		{
+			name: "valid config",
+			config: &Config{
+				Address: "0x123",
+			},
+			expectError: false,
+		},
+		{
+			name: "invalid config - empty address",
+			config: &Config{
+				Address: "",
+			},
+			expectError: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := tt.config.Validate()
+			if tt.expectError {
+				assert.Error(t, err)
+
+				return
+			}
+
+			assert.NoError(t, err)
+		})
+	}
+}
