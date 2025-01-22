@@ -1,4 +1,4 @@
-FROM golang:1.22 AS builder
+FROM golang:1.23 AS builder
 WORKDIR /src
 COPY go.sum go.mod ./
 RUN go mod download
@@ -12,5 +12,4 @@ RUN apt-get update && apt-get -y upgrade && apt-get install -y --no-install-reco
   && apt-get clean \
   && rm -rf /var/lib/apt/lists/*
 COPY --from=builder /bin/app /splitoor
-EXPOSE 5555
 ENTRYPOINT ["/splitoor"]

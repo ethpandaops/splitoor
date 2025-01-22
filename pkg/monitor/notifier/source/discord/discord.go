@@ -46,6 +46,10 @@ func (c *Discord) GetName() string {
 	return c.name
 }
 
+func (c *Discord) GetConfig() *Config {
+	return c.config
+}
+
 func (c *Discord) Publish(ctx context.Context, e event.Event) error {
 	log := c.log.WithField("group", e.GetGroup())
 	log.Debug("Publishing message to Discord")

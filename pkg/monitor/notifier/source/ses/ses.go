@@ -12,6 +12,8 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
+const SourceType = "ses"
+
 type SES struct {
 	log     logrus.FieldLogger
 	monitor string
@@ -50,11 +52,15 @@ func (s *SES) Stop(ctx context.Context) error {
 }
 
 func (s *SES) GetType() string {
-	return "ses"
+	return SourceType
 }
 
 func (s *SES) GetName() string {
 	return s.name
+}
+
+func (s *SES) GetConfig() *Config {
+	return s.config
 }
 
 func (s *SES) Publish(ctx context.Context, e event.Event) error {

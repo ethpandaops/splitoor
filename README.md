@@ -3,6 +3,64 @@
 - Monitor splits, validators and provide notifications on relevant events
 - Deploy and manage 0xSplits v1 contracts via CLI
 
+
+## Getting Started
+
+### Download a release
+
+Download the latest release from the [Releases page](https://github.com/ethpandaops/splitoor/releases). Extract and run with:
+
+```bash
+./splitoor --help
+```
+
+### Docker
+
+Available as a docker image at [ethpandaops/splitoor](https://hub.docker.com/r/ethpandaops/splitoor/tags)
+#### Images
+
+- `latest` - distroless, multiarch
+- `latest-debian` - debian, multiarch
+- `$version` - distroless, multiarch, pinned to a release (i.e. `0.1.0`)
+- `$version-debian` - debian, multiarch, pinned to a release (i.e. `0.1.0-debian`)
+
+**Quick start**
+
+```bash
+docker run -d  --name splitoor -v $HOST_DIR_CHANGE_ME/config.yaml:/opt/splitoor/config.yaml -p 9090:9090 -it ethpandaops/splitoor:latest monitor --config /opt/splitoor/config.yaml;
+docker logs -f splitoor;
+```
+
+### Kubernetes via Helm
+
+- [splitoor](https://github.com/skylenet/ethereum-helm-charts/tree/master/charts/splitoor)
+
+```bash
+helm repo add ethereum-helm-charts https://ethpandaops.github.io/ethereum-helm-charts
+
+# monitor
+helm install splitoor ethereum-helm-charts/splitoor -f your_values.yaml
+```
+
+### Building yourself
+
+1. Clone the repo
+   ```sh
+   go get github.com/ethpandaops/splitoor
+   ```
+1. Change directories
+   ```sh
+   cd ./splitoor
+   ```
+1. Build the binary
+   ```sh  
+    go build -o splitoor .
+   ```
+1. Run the monitor
+   ```sh  
+    ./splitoor monitor --config example_server_config.yaml
+   ```
+
 ## Usage
 
 Splitoor has two main running modes: a monitor and interacting with 0xSplits v1 contracts.

@@ -16,6 +16,10 @@ type Config struct {
 }
 
 func (c *Config) Validate() error {
+	if c == nil {
+		return fmt.Errorf("config is nil")
+	}
+
 	if c.Name == "" {
 		return fmt.Errorf("name is required")
 	}

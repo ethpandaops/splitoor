@@ -25,10 +25,6 @@ func NewService(ctx context.Context, log logrus.FieldLogger, monitor string, con
 		return nil, fmt.Errorf("no beaconchain client or ethereum beacon nodes configured")
 	}
 
-	if len(config.Groups) == 0 {
-		return nil, fmt.Errorf("no groups configured")
-	}
-
 	groups := make([]*group.Group, 0, len(config.Groups))
 
 	for _, g := range config.Groups {

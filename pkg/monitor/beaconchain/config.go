@@ -15,6 +15,10 @@ type Config struct {
 }
 
 func (c *Config) Validate() error {
+	if !c.Enabled {
+		return nil
+	}
+
 	if c.BatchSize <= 0 {
 		return fmt.Errorf("batch size must be greater than 0")
 	}

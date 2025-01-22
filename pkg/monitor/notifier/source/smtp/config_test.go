@@ -1,20 +1,21 @@
-package smtp
+package smtp_test
 
 import (
 	"testing"
 
+	"github.com/ethpandaops/splitoor/pkg/monitor/notifier/source/smtp"
 	"github.com/stretchr/testify/assert"
 )
 
 func TestConfigValidate(t *testing.T) {
 	tests := []struct {
 		name        string
-		config      *Config
+		config      *smtp.Config
 		expectError bool
 	}{
 		{
 			name: "valid config",
-			config: &Config{
+			config: &smtp.Config{
 				Host:     "smtp.example.com",
 				Port:     587,
 				Username: "test@example.com",
@@ -26,7 +27,7 @@ func TestConfigValidate(t *testing.T) {
 		},
 		{
 			name: "empty host",
-			config: &Config{
+			config: &smtp.Config{
 				Port:     587,
 				Username: "test@example.com",
 				Password: "password",
@@ -37,7 +38,7 @@ func TestConfigValidate(t *testing.T) {
 		},
 		{
 			name: "empty from",
-			config: &Config{
+			config: &smtp.Config{
 				Host:     "smtp.example.com",
 				Port:     587,
 				Username: "test@example.com",
@@ -48,7 +49,7 @@ func TestConfigValidate(t *testing.T) {
 		},
 		{
 			name: "empty recipients",
-			config: &Config{
+			config: &smtp.Config{
 				Host:     "smtp.example.com",
 				Port:     587,
 				Username: "test@example.com",
@@ -59,7 +60,7 @@ func TestConfigValidate(t *testing.T) {
 		},
 		{
 			name: "invalid port",
-			config: &Config{
+			config: &smtp.Config{
 				Host:     "smtp.example.com",
 				Port:     0,
 				Username: "test@example.com",

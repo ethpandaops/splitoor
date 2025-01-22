@@ -1,15 +1,14 @@
-package smtp
+package smtp_test
 
 import (
 	"context"
 	"testing"
 
+	email "github.com/ethpandaops/splitoor/pkg/monitor/notifier/source/smtp"
 	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 )
-
-const SourceType = "smtp"
 
 type MockEvent struct {
 	mock.Mock
@@ -49,13 +48,13 @@ func TestNewSMTP(t *testing.T) {
 	tests := []struct {
 		name        string
 		monitor     string
-		config      *Config
+		config      *email.Config
 		expectError bool
 	}{
 		{
 			name:    "valid config",
 			monitor: "test_monitor",
-			config: &Config{
+			config: &email.Config{
 				Host:     "smtp.example.com",
 				Port:     587,
 				Username: "test@example.com",
@@ -71,7 +70,7 @@ func TestNewSMTP(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			log := logrus.New()
 			entry := log.WithField("test", "test")
-			smtp, err := NewSMTP(context.Background(), entry, tt.monitor, tt.name, tt.config)
+			smtp, err := email.NewSMTP(context.Background(), entry, tt.monitor, tt.name, tt.config)
 
 			if tt.expectError {
 				assert.Error(t, err)
@@ -79,9 +78,8 @@ func TestNewSMTP(t *testing.T) {
 			} else {
 				assert.NoError(t, err)
 				assert.NotNil(t, smtp)
-				assert.Equal(t, tt.name, smtp.name)
-				assert.NotNil(t, smtp.config)
-				assert.Equal(t, tt.config, smtp.config)
+				assert.Equal(t, tt.name, smtp.GetName())
+				assert.Equal(t, tt.config, smtp.GetConfig())
 			}
 		})
 	}
@@ -90,7 +88,7 @@ func TestNewSMTP(t *testing.T) {
 func TestSMTPStartStop(t *testing.T) {
 	log := logrus.New()
 	entry := log.WithField("test", "test")
-	smtp, err := NewSMTP(context.Background(), entry, "test", "test_source", &Config{
+	smtp, err := email.NewSMTP(context.Background(), entry, "test", "test_source", &email.Config{
 		Host:     "smtp.example.com",
 		Port:     587,
 		Username: "test@example.com",
@@ -110,7 +108,7 @@ func TestSMTPStartStop(t *testing.T) {
 func TestSMTPGetTypeAndName(t *testing.T) {
 	log := logrus.New()
 	entry := log.WithField("test", "test")
-	smtp, err := NewSMTP(context.Background(), entry, "test", "test_source", &Config{
+	smtp, err := email.NewSMTP(context.Background(), entry, "test", "test_source", &email.Config{
 		Host:     "smtp.example.com",
 		Port:     587,
 		Username: "test@example.com",
@@ -120,6 +118,6 @@ func TestSMTPGetTypeAndName(t *testing.T) {
 	})
 	assert.NoError(t, err)
 
-	assert.Equal(t, SourceType, smtp.GetType())
-	assert.Equal(t, smtp.name, smtp.GetName())
+	assert.Equal(t, email.SourceType, smtp.GetType())
+	assert.Equal(t, "test_source", smtp.GetName())
 }

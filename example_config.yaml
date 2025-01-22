@@ -69,7 +69,7 @@ notifier:
       name: "telegram"
       config:
         botToken: "your-bot-token"
-        chatID: "your-chat-id"
+        chatId: "your-chat-id"
     - type: "smtp"
       name: "smtp"
       config:

@@ -11,6 +11,8 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
+const SourceType = "smtp"
+
 type SMTP struct {
 	log      logrus.FieldLogger
 	config   *Config
@@ -49,11 +51,15 @@ func (s *SMTP) Stop(ctx context.Context) error {
 }
 
 func (s *SMTP) GetType() string {
-	return "smtp"
+	return SourceType
 }
 
 func (s *SMTP) GetName() string {
 	return s.name
+}
+
+func (s *SMTP) GetConfig() *Config {
+	return s.config
 }
 
 func (s *SMTP) Publish(ctx context.Context, evt event.Event) error {

@@ -1,20 +1,21 @@
-package ses
+package ses_test
 
 import (
 	"testing"
 
+	"github.com/ethpandaops/splitoor/pkg/monitor/notifier/source/ses"
 	"github.com/stretchr/testify/assert"
 )
 
 func TestConfigValidate(t *testing.T) {
 	tests := []struct {
 		name        string
-		config      *Config
+		config      *ses.Config
 		expectError bool
 	}{
 		{
 			name: "valid config",
-			config: &Config{
+			config: &ses.Config{
 				From: "test@example.com",
 				To:   []string{"recipient@example.com"},
 			},
@@ -22,21 +23,21 @@ func TestConfigValidate(t *testing.T) {
 		},
 		{
 			name: "empty from",
-			config: &Config{
+			config: &ses.Config{
 				To: []string{"recipient@example.com"},
 			},
 			expectError: true,
 		},
 		{
 			name: "empty recipients",
-			config: &Config{
+			config: &ses.Config{
 				From: "test@example.com",
 			},
 			expectError: true,
 		},
 		{
 			name: "empty recipient list",
-			config: &Config{
+			config: &ses.Config{
 				From: "test@example.com",
 				To:   []string{},
 			},

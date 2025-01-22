@@ -1,15 +1,14 @@
-package ses
+package ses_test
 
 import (
 	"context"
 	"testing"
 
+	s "github.com/ethpandaops/splitoor/pkg/monitor/notifier/source/ses"
 	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 )
-
-const SourceType = "ses"
 
 type MockEvent struct {
 	mock.Mock
@@ -49,13 +48,13 @@ func TestNewSES(t *testing.T) {
 	tests := []struct {
 		name        string
 		monitor     string
-		config      *Config
+		config      *s.Config
 		expectError bool
 	}{
 		{
 			name:    "valid config",
 			monitor: "test_monitor",
-			config: &Config{
+			config: &s.Config{
 				From: "test@example.com",
 				To:   []string{"recipient@example.com"},
 			},
@@ -67,7 +66,7 @@ func TestNewSES(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			log := logrus.New()
 			entry := log.WithField("test", "test")
-			ses, err := NewSES(context.Background(), entry, tt.monitor, tt.name, tt.config)
+			ses, err := s.NewSES(context.Background(), entry, tt.monitor, tt.name, tt.config)
 
 			if tt.expectError {
 				assert.Error(t, err)
@@ -75,9 +74,8 @@ func TestNewSES(t *testing.T) {
 			} else {
 				assert.NoError(t, err)
 				assert.NotNil(t, ses)
-				assert.Equal(t, tt.name, ses.name)
-				assert.NotNil(t, ses.config)
-				assert.Equal(t, tt.config, ses.config)
+				assert.Equal(t, tt.name, ses.GetName())
+				assert.Equal(t, tt.config, ses.GetConfig())
 			}
 		})
 	}
@@ -86,7 +84,7 @@ func TestNewSES(t *testing.T) {
 func TestSESStartStop(t *testing.T) {
 	log := logrus.New()
 	entry := log.WithField("test", "test")
-	ses, err := NewSES(context.Background(), entry, "test", "test_source", &Config{
+	ses, err := s.NewSES(context.Background(), entry, "test", "test_source", &s.Config{
 		From: "test@example.com",
 		To:   []string{"recipient@example.com"},
 	})
@@ -102,12 +100,12 @@ func TestSESStartStop(t *testing.T) {
 func TestSESGetTypeAndName(t *testing.T) {
 	log := logrus.New()
 	entry := log.WithField("test", "test")
-	ses, err := NewSES(context.Background(), entry, "test", "test_source", &Config{
+	ses, err := s.NewSES(context.Background(), entry, "test", "test_source", &s.Config{
 		From: "test@example.com",
 		To:   []string{"recipient@example.com"},
 	})
 	assert.NoError(t, err)
 
-	assert.Equal(t, SourceType, ses.GetType())
-	assert.Equal(t, ses.name, ses.GetName())
+	assert.Equal(t, s.SourceType, ses.GetType())
+	assert.Equal(t, "test_source", ses.GetName())
 }

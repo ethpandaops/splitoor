@@ -1,28 +1,29 @@
-package discord_test
+package eoa
 
 import (
 	"testing"
 
-	"github.com/ethpandaops/splitoor/pkg/monitor/notifier/source/discord"
 	"github.com/stretchr/testify/assert"
 )
 
 func TestConfigValidate(t *testing.T) {
 	tests := []struct {
 		name        string
-		config      *discord.Config
+		config      *Config
 		expectError bool
 	}{
 		{
 			name: "valid config",
-			config: &discord.Config{
-				Webhook: "https://discord.com/api/webhooks/test",
+			config: &Config{
+				Address: "0x123",
 			},
 			expectError: false,
 		},
 		{
-			name:        "empty webhook",
-			config:      &discord.Config{},
+			name: "invalid config - empty address",
+			config: &Config{
+				Address: "",
+			},
 			expectError: true,
 		},
 	}
@@ -32,9 +33,11 @@ func TestConfigValidate(t *testing.T) {
 			err := tt.config.Validate()
 			if tt.expectError {
 				assert.Error(t, err)
-			} else {
-				assert.NoError(t, err)
+
+				return
 			}
+
+			assert.NoError(t, err)
 		})
 	}
 }

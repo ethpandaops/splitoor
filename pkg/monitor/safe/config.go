@@ -4,10 +4,14 @@ import "fmt"
 
 type Config struct {
 	Enabled  bool   `yaml:"enabled" default:"true"`
-	Endpoint string `yaml:"endpoint" default:"https://safe-client.safe.global/v1"`
+	Endpoint string `yaml:"endpoint" default:"https://safe-client.safe.global"`
 }
 
 func (c *Config) Validate() error {
+	if !c.Enabled {
+		return nil
+	}
+
 	if c.Endpoint == "" {
 		return fmt.Errorf("endpoint is required")
 	}

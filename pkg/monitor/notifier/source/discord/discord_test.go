@@ -1,4 +1,4 @@
-package discord
+package discord_test
 
 import (
 	"context"
@@ -6,6 +6,7 @@ import (
 	"net/http/httptest"
 	"testing"
 
+	disc "github.com/ethpandaops/splitoor/pkg/monitor/notifier/source/discord"
 	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
@@ -17,26 +18,31 @@ type MockEvent struct {
 
 func (m *MockEvent) GetMonitor() string {
 	args := m.Called()
+
 	return args.String(0)
 }
 
 func (m *MockEvent) GetType() string {
 	args := m.Called()
+
 	return args.String(0)
 }
 
 func (m *MockEvent) GetGroup() string {
 	args := m.Called()
+
 	return args.String(0)
 }
 
 func (m *MockEvent) GetTitle() string {
 	args := m.Called()
+
 	return args.String(0)
 }
 
 func (m *MockEvent) GetDescription() string {
 	args := m.Called()
+
 	return args.String(0)
 }
 
@@ -44,13 +50,13 @@ func TestNewDiscord(t *testing.T) {
 	tests := []struct {
 		name        string
 		monitor     string
-		config      *Config
+		config      *disc.Config
 		expectError bool
 	}{
 		{
 			name:    "valid config",
 			monitor: "test_monitor",
-			config: &Config{
+			config: &disc.Config{
 				Webhook: "https://discord.com/api/webhooks/test",
 			},
 			expectError: false,
@@ -61,7 +67,7 @@ func TestNewDiscord(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			log := logrus.New()
 			entry := log.WithField("test", "test")
-			discord, err := NewDiscord(context.Background(), entry, tt.monitor, tt.name, tt.config)
+			discord, err := disc.NewDiscord(context.Background(), entry, tt.monitor, tt.name, tt.config)
 
 			if tt.expectError {
 				assert.Error(t, err)
@@ -69,9 +75,8 @@ func TestNewDiscord(t *testing.T) {
 			} else {
 				assert.NoError(t, err)
 				assert.NotNil(t, discord)
-				assert.Equal(t, tt.name, discord.name)
-				assert.NotNil(t, discord.config)
-				assert.Equal(t, tt.config, discord.config)
+				assert.Equal(t, tt.name, discord.GetName())
+				assert.Equal(t, tt.config.Webhook, discord.GetConfig().Webhook)
 			}
 		})
 	}
@@ -111,7 +116,7 @@ func TestDiscordPublish(t *testing.T) {
 
 			log := logrus.New()
 			entry := log.WithField("test", "test")
-			discord, err := NewDiscord(context.Background(), entry, "test", "test_source", &Config{
+			discord, err := disc.NewDiscord(context.Background(), entry, "test", "test_source", &disc.Config{
 				Webhook: server.URL,
 			})
 			assert.NoError(t, err)
@@ -137,7 +142,7 @@ func TestDiscordPublish(t *testing.T) {
 func TestDiscordStartStop(t *testing.T) {
 	log := logrus.New()
 	entry := log.WithField("test", "test")
-	discord, err := NewDiscord(context.Background(), entry, "test", "test_source", &Config{
+	discord, err := disc.NewDiscord(context.Background(), entry, "test", "test_source", &disc.Config{
 		Webhook: "https://discord.com/api/webhooks/test",
 	})
 	assert.NoError(t, err)
@@ -152,11 +157,11 @@ func TestDiscordStartStop(t *testing.T) {
 func TestDiscordGetTypeAndName(t *testing.T) {
 	log := logrus.New()
 	entry := log.WithField("test", "test")
-	discord, err := NewDiscord(context.Background(), entry, "test", "test_source", &Config{
+	discord, err := disc.NewDiscord(context.Background(), entry, "test", "test_source", &disc.Config{
 		Webhook: "https://discord.com/api/webhooks/test",
 	})
 	assert.NoError(t, err)
 
-	assert.Equal(t, SourceType, discord.GetType())
-	assert.Equal(t, discord.name, discord.GetName())
+	assert.Equal(t, disc.SourceType, discord.GetType())
+	assert.Equal(t, "test_source", discord.GetName())
 }

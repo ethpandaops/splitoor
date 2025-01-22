@@ -1,6 +1,8 @@
 package controller
 
-import "errors"
+import (
+	"fmt"
+)
 
 type Config struct {
 	ControllerType ControllerType `yaml:"type"`
@@ -16,8 +18,12 @@ const (
 )
 
 func (c *Config) Validate() error {
-	if c.ControllerType == ControllerTypeUnknown {
-		return errors.New("controller type is required")
+	if c == nil {
+		return fmt.Errorf("config is nil")
+	}
+
+	if c.ControllerType == ControllerTypeUnknown || c.ControllerType == "" {
+		return fmt.Errorf("controller type is required")
 	}
 
 	return nil

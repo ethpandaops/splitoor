@@ -1,20 +1,21 @@
-package telegram
+package telegram_test
 
 import (
 	"testing"
 
+	"github.com/ethpandaops/splitoor/pkg/monitor/notifier/source/telegram"
 	"github.com/stretchr/testify/assert"
 )
 
 func TestConfigValidate(t *testing.T) {
 	tests := []struct {
 		name        string
-		config      *Config
+		config      *telegram.Config
 		expectError bool
 	}{
 		{
 			name: "valid config",
-			config: &Config{
+			config: &telegram.Config{
 				BotToken: "test-token",
 				ChatID:   "123456789",
 			},
@@ -22,21 +23,21 @@ func TestConfigValidate(t *testing.T) {
 		},
 		{
 			name: "empty bot token",
-			config: &Config{
+			config: &telegram.Config{
 				ChatID: "123456789",
 			},
 			expectError: true,
 		},
 		{
 			name: "empty chat id",
-			config: &Config{
+			config: &telegram.Config{
 				BotToken: "test-token",
 			},
 			expectError: true,
 		},
 		{
 			name:        "empty config",
-			config:      &Config{},
+			config:      &telegram.Config{},
 			expectError: true,
 		},
 	}

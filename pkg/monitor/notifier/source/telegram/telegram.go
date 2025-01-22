@@ -7,15 +7,22 @@ import (
 
 	"github.com/ethpandaops/splitoor/pkg/monitor/event"
 	"github.com/go-telegram/bot"
+	"github.com/go-telegram/bot/models"
 	"github.com/sirupsen/logrus"
 )
+
+const SourceType = "telegram"
+
+type botClient interface {
+	SendMessage(ctx context.Context, params *bot.SendMessageParams) (*models.Message, error)
+}
 
 type Telegram struct {
 	log     logrus.FieldLogger
 	config  *Config
 	monitor string
 	name    string
-	client  *bot.Bot
+	client  botClient
 	metrics *Metrics
 }
 
@@ -29,6 +36,10 @@ func NewTelegram(ctx context.Context, log logrus.FieldLogger, monitor, name stri
 		return nil, fmt.Errorf("failed to create telegram bot: %w", err)
 	}
 
+	return NewTelegramWithClient(log, monitor, name, config, client)
+}
+
+func NewTelegramWithClient(log logrus.FieldLogger, monitor, name string, config *Config, client botClient) (*Telegram, error) {
 	return &Telegram{
 		log:     log.WithField("source", "telegram"),
 		config:  config,
@@ -37,6 +48,12 @@ func NewTelegram(ctx context.Context, log logrus.FieldLogger, monitor, name stri
 		client:  client,
 		metrics: GetMetricsInstance("splitoor_notifier_telegram", monitor),
 	}, nil
+}
+
+func (t *Telegram) WithClient(client botClient) *Telegram {
+	t.client = client
+
+	return t
 }
 
 func (t *Telegram) Start(ctx context.Context) error {
@@ -48,11 +65,15 @@ func (t *Telegram) Stop(ctx context.Context) error {
 }
 
 func (t *Telegram) GetType() string {
-	return "telegram"
+	return SourceType
 }
 
 func (t *Telegram) GetName() string {
 	return t.name
+}
+
+func (t *Telegram) GetConfig() *Config {
+	return t.config
 }
 
 func (t *Telegram) Publish(ctx context.Context, e event.Event) error {
