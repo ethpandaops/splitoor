@@ -193,7 +193,7 @@ func (g *Group) setupSplit(ctx context.Context) error {
 		PercentageAllocations: allocations,
 	}
 
-	hash, err := g.client.CalculateHash(hashParams)
+	hash, err := spl.CalculateHash(hashParams)
 	if err != nil {
 		return errors.Wrap(err, "failed to calculate hash")
 	}

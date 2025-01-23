@@ -121,6 +121,16 @@ splitoor split update \
   --percentages 600000,400000 # 60%, 40%
 ```
 
+#### Calculate split hash
+
+Calculate the keccak256 hash of split recipients and percentages.
+
+```bash
+splitoor split calculate-hash \
+  --recipients <RECIPIENT_1_ADDRESS>,<RECIPIENT_2_ADDRESS> \
+  --percentages 600000,400000 # 60%, 40%
+```
+
 #### Get split status
 
 Get the current controller and hash of a split.
