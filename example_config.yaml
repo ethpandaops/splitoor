@@ -1,6 +1,7 @@
 logging: "info" # panic,fatal,warn,info,debug,trace
 name: "monitor-1"
 metricsAddr: ":9090"
+# healthCheckAddr: ":9191" # optional. if supplied it enables healthcheck server
 # pprofAddr: ":6060" # optional. if supplied it enables pprof server
 
 ethereum:
@@ -15,11 +16,10 @@ ethereum:
       nodeHeaders:
         Authorization: "Basic base64encodedcreds"
 
-
 # connects to beaconchain to get validator status
 beaconchain:
   enabled: true
-  apiKey: "1234567890" # optional
+  # apiKey: "" # optional
   checkInterval: 1h
   # endpoint: "https://beaconcha.in"
   # batchSize: 50
@@ -32,8 +32,8 @@ safe:
 
 services:
   split:
-    splits:
-      - name: "someone-1"
+    groups:
+      - name: "group-1"
         address: "0x0000000000000000000000000000000000000000" # split address
         contract: "0x0000000000000000000000000000000000000000" # 0xSplits v1 contract address, not needed for mainnet, holesky and sepolia
         accounts:
@@ -53,7 +53,7 @@ services:
             recoveryAddress: "0x0000000000000000000000000000000000000000" # address of the split update for recovery state
   validator:
     groups:
-      - name: "someone-1"
+      - name: "group-1"
         pubkeys:
           - "0x000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000"
           - "0x000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000"

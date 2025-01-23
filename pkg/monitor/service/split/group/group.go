@@ -213,6 +213,10 @@ func (g *Group) tick(ctx context.Context) {
 
 func (g *Group) checkController(ctx context.Context) {
 	for _, node := range g.ethereumPool.GetHealthyExecutionNodes() {
+		if ctx.Err() != nil {
+			return
+		}
+
 		actualController, err := g.client.GetController(ctx, node, g.contractABI)
 		if err != nil {
 			g.log.WithError(err).Error("Error fetching controller")
@@ -251,6 +255,12 @@ func (g *Group) checkHash(ctx context.Context) {
 			g.log.WithError(err).Error("Error fetching hash")
 		}
 
+		if actualHash == nil {
+			g.log.WithField("node", node.Name()).Error("Hash is nil")
+
+			continue
+		}
+
 		actualHashString := hex.EncodeToString(actualHash[:])
 
 		val := float64(0)
@@ -284,6 +294,12 @@ func (g *Group) gatherMetrics(ctx context.Context) {
 		balance, err := node.BalanceAt(ctx, g.address)
 		if err != nil {
 			g.log.WithError(err).WithField("node", node.Name()).Error("Error fetching balance")
+		}
+
+		if balance == nil {
+			g.log.WithField("node", node.Name()).Error("Balance is nil")
+
+			continue
 		}
 
 		g.metrics.UpdateBalance(float64(balance.Uint64()), []string{g.name, node.Name(), g.address})

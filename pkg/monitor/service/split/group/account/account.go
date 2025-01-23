@@ -87,12 +87,24 @@ func (a *Account) tick(ctx context.Context) {
 			a.log.WithError(err).WithField("node", node.Name()).Error("Error fetching balance")
 		}
 
+		if balance == nil {
+			a.log.WithField("node", node.Name()).Error("Balance is nil")
+
+			continue
+		}
+
 		a.metrics.UpdateBalance(float64(balance.Uint64()), []string{a.name, node.Name(), a.address})
 
 		if a.client != nil && a.contract != nil {
 			balance, err := a.client.GetETHBalance(ctx, node, a.contract, a.address)
 			if err != nil {
 				a.log.WithError(err).WithField("node", node.Name()).Error("Error fetching split account balance")
+			}
+
+			if balance == nil {
+				a.log.WithField("node", node.Name()).Error("Split account balance is nil")
+
+				continue
 			}
 
 			a.metrics.UpdateSplitBalance(float64(balance.Uint64()), []string{a.name, node.Name(), a.address})

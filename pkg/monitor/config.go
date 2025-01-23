@@ -13,6 +13,8 @@ import (
 type Config struct {
 	// MetricsAddr is the address to listen on for metrics.
 	MetricsAddr string `yaml:"metricsAddr" default:":9090"`
+	// HealthCheckAddr is the address to listen on for healthcheck.
+	HealthCheckAddr *string `yaml:"healthCheckAddr"`
 	// PProfAddr is the address to listen on for pprof.
 	PProfAddr *string `yaml:"pprofAddr"`
 	// LoggingLevel is the logging level to use.

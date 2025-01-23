@@ -1,8 +1,6 @@
 package split
 
 import (
-	"fmt"
-
 	"github.com/ethpandaops/splitoor/pkg/monitor/service/split/group"
 )
 
@@ -14,7 +12,7 @@ type Config struct {
 
 func (c *Config) Validate() error {
 	if c == nil {
-		return fmt.Errorf("config is nil")
+		return nil
 	}
 
 	for _, g := range c.Groups {

@@ -9,7 +9,7 @@ type Config struct {
 
 func (c *Config) Validate() error {
 	if c == nil {
-		return fmt.Errorf("config is nil")
+		return nil
 	}
 
 	if c.Name == "" {

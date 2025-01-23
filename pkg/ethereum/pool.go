@@ -235,6 +235,10 @@ func (p *Pool) Start(ctx context.Context) {
 
 	go func() {
 		if err := g.Wait(); err != nil {
+			if ctx.Err() != nil {
+				return
+			}
+
 			p.log.WithError(err).Error("error in pool")
 		}
 	}()

@@ -29,6 +29,7 @@ type Server struct {
 
 	metricsServer *http.Server
 	pprofServer   *http.Server
+	healthServer  *http.Server
 
 	ethereumPool *ethereum.Pool
 
@@ -100,6 +101,18 @@ func (s *Server) Start(ctx context.Context) error {
 		})
 	}
 
+	if s.config.HealthCheckAddr != nil {
+		g.Go(func() error {
+			if err := s.startHealthCheck(); err != nil {
+				if err != http.ErrServerClosed {
+					return err
+				}
+			}
+
+			return nil
+		})
+	}
+
 	g.Go(func() error {
 		return s.publisher.Start(ctx)
 	})
@@ -144,6 +157,12 @@ func (s *Server) stop(ctx context.Context) error {
 		}
 	}
 
+	if s.healthServer != nil {
+		if err := s.healthServer.Shutdown(ctx); err != nil {
+			return err
+		}
+	}
+
 	if s.metricsServer != nil {
 		if err := s.metricsServer.Shutdown(ctx); err != nil {
 			return err
@@ -166,7 +185,7 @@ func (s *Server) startServices(ctx context.Context) error {
 }
 
 func (s *Server) startPProf() error {
-	s.log.WithField("addr", s.config.PProfAddr).Info("Starting pprof server")
+	s.log.WithField("addr", *s.config.PProfAddr).Info("Starting pprof server")
 
 	s.pprofServer = &http.Server{
 		Addr:              *s.config.PProfAddr,
@@ -174,4 +193,19 @@ func (s *Server) startPProf() error {
 	}
 
 	return s.pprofServer.ListenAndServe()
+}
+
+func (s *Server) startHealthCheck() error {
+	s.log.WithField("addr", *s.config.HealthCheckAddr).Info("Starting healthcheck server")
+
+	s.healthServer = &http.Server{
+		Addr:              *s.config.HealthCheckAddr,
+		ReadHeaderTimeout: 120 * time.Second,
+	}
+
+	s.healthServer.Handler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+	})
+
+	return s.healthServer.ListenAndServe()
 }

@@ -28,19 +28,23 @@ const (
 func CreateServices(ctx context.Context, log logrus.FieldLogger, monitor string, cfg *Config, ethereumPool *ethereum.Pool, publisher *notifier.Publisher, beaconchainClient beaconchain.Client, safeClient safe.Client) ([]Service, error) {
 	services := []Service{}
 
-	sp, err := split.NewService(ctx, log, monitor, &cfg.Split, ethereumPool, publisher, safeClient)
-	if err != nil {
-		return nil, err
+	if cfg.Split != nil {
+		sp, err := split.NewService(ctx, log, monitor, cfg.Split, ethereumPool, publisher, safeClient)
+		if err != nil {
+			return nil, err
+		}
+
+		services = append(services, sp)
 	}
 
-	services = append(services, sp)
+	if cfg.Validator != nil {
+		vp, err := validator.NewService(ctx, log, monitor, cfg.Validator, ethereumPool, publisher, beaconchainClient)
+		if err != nil {
+			return nil, err
+		}
 
-	vp, err := validator.NewService(ctx, log, monitor, &cfg.Validator, ethereumPool, publisher, beaconchainClient)
-	if err != nil {
-		return nil, err
+		services = append(services, vp)
 	}
-
-	services = append(services, vp)
 
 	return services, nil
 }
