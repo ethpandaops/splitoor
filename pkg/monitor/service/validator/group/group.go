@@ -145,11 +145,36 @@ func (g *Group) checkBeaconAPI(ctx context.Context, state *State) {
 	for _, node := range g.ethereumPool.GetHealthyBeaconNodes() {
 		validators, err := node.Node().FetchValidators(ctx, "head", nil, g.pubkeys)
 		if err != nil {
-			g.log.WithError(err).WithField("node", node.Name()).Error("Error fetching validators")
+			g.log.WithError(err).WithField("source", node.Name()).Error("Error fetching validators")
+
+			for _, pubkey := range g.pubkeys {
+				g.metrics.UpdateStatus(MetricsStatusUnknown, []string{g.name, pubkey.String(), node.Name()})
+			}
+
+			continue
 		}
+
+		foundPubkeys := make(map[string]bool)
 
 		for _, validator := range validators {
 			g.updateValidatorBeaconAPI(validator, node.Name(), state)
+
+			pubkey, err := validator.PubKey(ctx)
+			if err != nil {
+				g.log.WithError(err).WithField("source", node.Name()).WithField("validator_index", validator.Index).Error("Error getting pubkey")
+
+				continue
+			}
+
+			foundPubkeys[pubkey.String()] = true
+		}
+
+		for _, pubkey := range g.pubkeys {
+			if !foundPubkeys[pubkey.String()] {
+				g.log.WithField("pubkey", pubkey.String()).WithField("source", node.Name()).Warn("Validator not found")
+
+				g.metrics.UpdateStatus(MetricsStatusUnknown, []string{g.name, pubkey.String(), node.Name()})
+			}
 		}
 	}
 }
@@ -205,6 +230,9 @@ func (g *Group) getValidatorsBeaconchain(ctx context.Context, validators []strin
 	if len(validators) == 1 {
 		response, err := g.beaconchain.GetValidator(ctx, validators[0])
 		if err != nil {
+			g.log.WithError(err).WithField("source", "beaconcha.in").WithField("pubkey", validators[0]).Error("Error getting validator")
+			g.metrics.UpdateStatus(MetricsStatusUnknown, []string{g.name, validators[0], "beaconcha.in"})
+
 			return err
 		}
 
@@ -212,12 +240,30 @@ func (g *Group) getValidatorsBeaconchain(ctx context.Context, validators []strin
 	} else {
 		response, err := g.beaconchain.GetValidators(ctx, validators)
 		if err != nil {
+			for _, pubkey := range validators {
+				g.metrics.UpdateStatus(MetricsStatusUnknown, []string{g.name, pubkey, "beaconcha.in"})
+			}
+
+			g.log.WithError(err).WithField("source", "beaconcha.in").WithField("pubkeys", validators).Error("Error getting validators")
+
 			return err
 		}
+
+		foundPubkeys := make(map[string]bool)
 
 		for _, validator := range response {
 			if validator != nil {
 				g.updateValidatorBeaconchain(validator, state)
+
+				foundPubkeys[validator.Pubkey] = true
+			}
+		}
+
+		for _, pubkey := range g.pubkeys {
+			if !foundPubkeys[pubkey.String()] {
+				g.log.WithField("pubkey", pubkey.String()).WithField("source", "beaconcha.in").Warn("Validator not found")
+
+				g.metrics.UpdateStatus(MetricsStatusUnknown, []string{g.name, pubkey.String(), "beaconcha.in"})
 			}
 		}
 	}
