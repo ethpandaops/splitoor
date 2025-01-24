@@ -47,7 +47,7 @@ func GetMetricsInstance(namespace, monitor string) *Metrics {
 					Help:        "The controller of the split matches expected controller.",
 					ConstLabels: constLabels,
 				},
-				[]string{"group", "source", "split_address", "expected_controller", "actual_controller"},
+				[]string{"group", "source", "split_address", "expected_controller", "actual_controller", "type"},
 			),
 		}
 

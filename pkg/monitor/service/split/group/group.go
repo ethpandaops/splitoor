@@ -227,7 +227,7 @@ func (g *Group) checkController(ctx context.Context) {
 			val = 1
 		}
 
-		g.metrics.UpdateController(val, []string{g.name, node.Name(), g.address, g.controller.Address(), *actualController})
+		g.metrics.UpdateController(val, []string{g.name, node.Name(), g.address, g.controller.Address(), *actualController, g.controller.Type()})
 
 		shouldAlert := g.controllerAlert.Update(*actualController)
 		if shouldAlert {
