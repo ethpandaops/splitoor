@@ -22,11 +22,12 @@ func NewConfirmations(log logrus.FieldLogger) *Confirmations {
 	}
 }
 
-func (c *Confirmations) Update(numConfirmations, expectedConfirmations int) (shouldAlert bool) {
+func (c *Confirmations) Update(numConfirmations, expectedConfirmations int, hasNextRecoveryTx bool) (shouldAlert bool) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
-	shouldBeAlerting := c.check(numConfirmations, expectedConfirmations)
+	// only alert if the number of confirmations is not the expected number and there is a valid recovery tx that is next in the queue
+	shouldBeAlerting := numConfirmations != expectedConfirmations && hasNextRecoveryTx
 
 	if c.alerting {
 		shouldAlert = false
@@ -47,8 +48,4 @@ func (c *Confirmations) Update(numConfirmations, expectedConfirmations int) (sho
 	c.expectedConfirmations = expectedConfirmations
 
 	return
-}
-
-func (c *Confirmations) check(confirms, expected int) bool {
-	return confirms != expected
 }

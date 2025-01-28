@@ -242,8 +242,8 @@ func (c *Safe) tick(ctx context.Context) {
 	/*
 	 * Alert if a valid recovery transaction is not next in the queue
 	 */
-	shouldAlert = c.next.Update(hasNextRecoveryTx)
-	if shouldAlert && recoveryTx != "" && invalidRecoveryError == nil {
+	shouldAlert = c.next.Update(recoveryTx != "", invalidRecoveryError == nil, hasNextRecoveryTx)
+	if shouldAlert {
 		c.log.WithFields(logrus.Fields{
 			"tx_id": recoveryTx,
 		}).Warn("Alerting recovery transaction not next")
@@ -262,8 +262,8 @@ func (c *Safe) tick(ctx context.Context) {
 	/*
 	 * Alert if a valid next recovery transaction is not pre-signed
 	 */
-	shouldAlert = c.confirmations.Update(currentConfirmations, expectedConfirmations)
-	if shouldAlert && hasNextRecoveryTx {
+	shouldAlert = c.confirmations.Update(currentConfirmations, expectedConfirmations, hasNextRecoveryTx)
+	if shouldAlert {
 		c.log.WithFields(logrus.Fields{
 			"current_confirmations":  currentConfirmations,
 			"expected_confirmations": expectedConfirmations,

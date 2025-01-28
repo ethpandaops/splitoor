@@ -9,8 +9,10 @@ import (
 type Next struct {
 	log logrus.FieldLogger
 
-	alerting bool
-	isNext   bool
+	alerting           bool
+	hasRecoveryTx      bool
+	hasRecoveryTxError bool
+	recoveryTxIsNext   bool
 
 	mu sync.Mutex
 }
@@ -21,11 +23,12 @@ func NewNext(log logrus.FieldLogger) *Next {
 	}
 }
 
-func (n *Next) Update(isNext bool) (shouldAlert bool) {
+func (n *Next) Update(hasRecoveryTx, hasRecoveryTxError, recoveryTxIsNext bool) (shouldAlert bool) {
 	n.mu.Lock()
 	defer n.mu.Unlock()
 
-	shouldBeAlerting := !isNext
+	// only alert if the recovery tx is not next and there is a valid recovery tx
+	shouldBeAlerting := !recoveryTxIsNext && hasRecoveryTx && !hasRecoveryTxError
 
 	if n.alerting {
 		shouldAlert = false
@@ -42,7 +45,9 @@ func (n *Next) Update(isNext bool) (shouldAlert bool) {
 		}
 	}
 
-	n.isNext = isNext
+	n.hasRecoveryTx = hasRecoveryTx
+	n.hasRecoveryTxError = hasRecoveryTxError
+	n.recoveryTxIsNext = recoveryTxIsNext
 
 	return
 }
