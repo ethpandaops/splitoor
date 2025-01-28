@@ -220,6 +220,14 @@ func (g *Group) checkController(ctx context.Context) {
 		actualController, err := g.client.GetController(ctx, node, g.contractABI)
 		if err != nil {
 			g.log.WithError(err).Error("Error fetching controller")
+
+			continue
+		}
+
+		if actualController == nil {
+			g.log.WithField("node", node.Name()).Error("Controller is nil")
+
+			continue
 		}
 
 		val := float64(0)
