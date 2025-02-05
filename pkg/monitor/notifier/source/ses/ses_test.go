@@ -32,13 +32,19 @@ func (m *MockEvent) GetGroup() string {
 	return args.String(0)
 }
 
-func (m *MockEvent) GetTitle() string {
+func (m *MockEvent) GetTitle(includeMonitorName, includeGroupName bool) string {
 	args := m.Called()
 
 	return args.String(0)
 }
 
-func (m *MockEvent) GetDescription() string {
+func (m *MockEvent) GetDescriptionText(includeMonitorName, includeGroupName bool) string {
+	args := m.Called()
+
+	return args.String(0)
+}
+
+func (m *MockEvent) GetDescriptionMarkdown(includeMonitorName, includeGroupName bool) string {
 	args := m.Called()
 
 	return args.String(0)
@@ -66,7 +72,7 @@ func TestNewSES(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			log := logrus.New()
 			entry := log.WithField("test", "test")
-			ses, err := s.NewSES(context.Background(), entry, tt.monitor, tt.name, tt.config)
+			ses, err := s.NewSES(context.Background(), entry, tt.monitor, tt.name, nil, true, true, tt.config)
 
 			if tt.expectError {
 				assert.Error(t, err)
@@ -84,7 +90,7 @@ func TestNewSES(t *testing.T) {
 func TestSESStartStop(t *testing.T) {
 	log := logrus.New()
 	entry := log.WithField("test", "test")
-	ses, err := s.NewSES(context.Background(), entry, "test", "test_source", &s.Config{
+	ses, err := s.NewSES(context.Background(), entry, "test", "test_source", nil, true, true, &s.Config{
 		From: "test@example.com",
 		To:   []string{"recipient@example.com"},
 	})
@@ -100,7 +106,7 @@ func TestSESStartStop(t *testing.T) {
 func TestSESGetTypeAndName(t *testing.T) {
 	log := logrus.New()
 	entry := log.WithField("test", "test")
-	ses, err := s.NewSES(context.Background(), entry, "test", "test_source", &s.Config{
+	ses, err := s.NewSES(context.Background(), entry, "test", "test_source", nil, true, true, &s.Config{
 		From: "test@example.com",
 		To:   []string{"recipient@example.com"},
 	})

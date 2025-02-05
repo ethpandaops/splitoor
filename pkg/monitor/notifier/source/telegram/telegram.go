@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"strconv"
+	"strings"
 
 	"github.com/ethpandaops/splitoor/pkg/monitor/event"
 	"github.com/go-telegram/bot"
@@ -24,9 +25,13 @@ type Telegram struct {
 	name    string
 	client  botClient
 	metrics *Metrics
+
+	includeMonitorName bool
+	includeGroupName   bool
+	docs               *string
 }
 
-func NewTelegram(ctx context.Context, log logrus.FieldLogger, monitor, name string, config *Config) (*Telegram, error) {
+func NewTelegram(ctx context.Context, log logrus.FieldLogger, monitor, name string, docs *string, includeMonitorName, includeGroupName bool, config *Config) (*Telegram, error) {
 	if err := config.Validate(); err != nil {
 		return nil, err
 	}
@@ -36,17 +41,20 @@ func NewTelegram(ctx context.Context, log logrus.FieldLogger, monitor, name stri
 		return nil, fmt.Errorf("failed to create telegram bot: %w", err)
 	}
 
-	return NewTelegramWithClient(log, monitor, name, config, client)
+	return NewTelegramWithClient(log, monitor, name, docs, includeMonitorName, includeGroupName, config, client)
 }
 
-func NewTelegramWithClient(log logrus.FieldLogger, monitor, name string, config *Config, client botClient) (*Telegram, error) {
+func NewTelegramWithClient(log logrus.FieldLogger, monitor, name string, docs *string, includeMonitorName, includeGroupName bool, config *Config, client botClient) (*Telegram, error) {
 	return &Telegram{
-		log:     log.WithField("source", "telegram"),
-		config:  config,
-		monitor: monitor,
-		name:    name,
-		client:  client,
-		metrics: GetMetricsInstance("splitoor_notifier_telegram", monitor),
+		log:                log.WithField("source", "telegram"),
+		config:             config,
+		monitor:            monitor,
+		name:               name,
+		client:             client,
+		metrics:            GetMetricsInstance("splitoor_notifier_telegram", monitor),
+		includeMonitorName: includeMonitorName,
+		includeGroupName:   includeGroupName,
+		docs:               docs,
 	}, nil
 }
 
@@ -91,13 +99,33 @@ func (t *Telegram) Publish(ctx context.Context, e event.Event) error {
 		return fmt.Errorf("invalid chat ID: %w", err)
 	}
 
-	text := fmt.Sprintf("<b>%s</b>\n\n%s", e.GetTitle(), e.GetDescription())
+	description := e.GetDescriptionMarkdown(t.includeMonitorName, t.includeGroupName)
 
-	_, err = t.client.SendMessage(ctx, &bot.SendMessageParams{
+	if t.docs != nil {
+		docURL := strings.ReplaceAll(*t.docs, ":group", e.GetGroup())
+		description = fmt.Sprintf("%s\n\n[**Go to docs**](%s)", description, docURL)
+	}
+
+	title := strings.ReplaceAll(e.GetTitle(t.includeMonitorName, t.includeGroupName), "-", "\\-")
+	description = strings.ReplaceAll(strings.ReplaceAll(description, "**", "***"), "-", "\\-")
+	text := fmt.Sprintf("🚨 ***%s***\n\n%s", title, description)
+
+	isDisabled := true
+
+	params := &bot.SendMessageParams{
 		ChatID:    chatID,
 		Text:      text,
-		ParseMode: "HTML",
-	})
+		ParseMode: "MarkdownV2",
+		LinkPreviewOptions: &models.LinkPreviewOptions{
+			IsDisabled: &isDisabled,
+		},
+	}
+
+	if t.config.ThreadID != 0 {
+		params.MessageThreadID = int(t.config.ThreadID)
+	}
+
+	_, err = t.client.SendMessage(ctx, params)
 
 	if err != nil {
 		errorType = "send_message"

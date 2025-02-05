@@ -31,7 +31,7 @@ func TestHash(t *testing.T) {
 			splitAddress: "0x123",
 			expectedHash: "0x456",
 			actualHash:   "0x789",
-			wantTitle:    "[test_monitor] test_group split hash has changed",
+			wantTitle:    "[test_monitor] Split hash has changed",
 			wantDesc: `
 Timestamp: 2024-01-01 12:00:00 UTC
 Monitor: test_monitor
@@ -48,7 +48,7 @@ Actual Hash: 0x789`,
 			splitAddress: "0x123",
 			expectedHash: "0x456",
 			actualHash:   "0x456",
-			wantTitle:    "[test_monitor] test_group split hash has changed",
+			wantTitle:    "[test_monitor] Split hash has changed",
 			wantDesc: `
 Timestamp: 2024-01-01 12:00:00 UTC
 Monitor: test_monitor
@@ -65,7 +65,7 @@ Actual Hash: 0x456`,
 			splitAddress: "0x123&*()",
 			expectedHash: "0x456{}[]",
 			actualHash:   "0x789<>?",
-			wantTitle:    "[test!@#] test$%^ split hash has changed",
+			wantTitle:    "[test!@#] Split hash has changed",
 			wantDesc: `
 Timestamp: 2024-01-01 12:00:00 UTC
 Monitor: test!@#
@@ -82,7 +82,7 @@ Actual Hash: 0x789<>?`,
 			splitAddress: "",
 			expectedHash: "",
 			actualHash:   "",
-			wantTitle:    "[test_monitor] test_group split hash has changed",
+			wantTitle:    "[test_monitor] Split hash has changed",
 			wantDesc: `
 Timestamp: 2024-01-01 12:00:00 UTC
 Monitor: test_monitor
@@ -99,7 +99,7 @@ Actual Hash: `,
 			splitAddress: "0x" + strings.Repeat("1", 64),
 			expectedHash: "0x" + strings.Repeat("2", 64),
 			actualHash:   "0x" + strings.Repeat("3", 64),
-			wantTitle:    "[" + strings.Repeat("m", 100) + "] " + strings.Repeat("g", 100) + " split hash has changed",
+			wantTitle:    "[" + strings.Repeat("m", 100) + "] Split hash has changed",
 			wantDesc: `
 Timestamp: 2024-01-01 12:00:00 UTC
 Monitor: ` + strings.Repeat("m", 100) + `
@@ -116,7 +116,7 @@ Actual Hash: 0x` + strings.Repeat("3", 64),
 			splitAddress: "0x测试地址",
 			expectedHash: "0x预期哈希",
 			actualHash:   "0x实际哈希",
-			wantTitle:    "[测试监控器] 测试组 split hash has changed",
+			wantTitle:    "[测试监控器] Split hash has changed",
 			wantDesc: `
 Timestamp: 2024-01-01 12:00:00 UTC
 Monitor: 测试监控器
@@ -133,7 +133,7 @@ Actual Hash: 0x实际哈希`,
 			splitAddress: "0x123",
 			expectedHash: "0x456",
 			actualHash:   "0x789",
-			wantTitle:    "[test_monitor] test_group split hash has changed",
+			wantTitle:    "[test_monitor] Split hash has changed",
 			wantDesc: `
 Timestamp: 9999-12-31 23:59:59 UTC
 Monitor: test_monitor
@@ -164,8 +164,8 @@ Actual Hash: 0x789`,
 			// Test getters
 			assert.Equal(t, tt.monitor, evt.GetMonitor())
 			assert.Equal(t, tt.group, evt.GetGroup())
-			assert.Equal(t, tt.wantTitle, evt.GetTitle())
-			assert.Equal(t, tt.wantDesc, evt.GetDescription())
+			assert.Equal(t, tt.wantTitle, evt.GetTitle(true, true))
+			assert.Equal(t, tt.wantDesc, evt.GetDescriptionText(true, true))
 
 			// Test fields
 			assert.Equal(t, tt.timestamp, evt.Timestamp)

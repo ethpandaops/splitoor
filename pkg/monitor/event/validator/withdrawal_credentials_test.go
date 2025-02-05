@@ -28,7 +28,7 @@ func TestWithdrawalCredentials(t *testing.T) {
 			pubkey:    "0x123",
 			group:     "test_group",
 			monitor:   "test_monitor",
-			wantTitle: "[test_monitor] test_group validator has unexpected withdrawal credentials type",
+			wantTitle: "[test_monitor] Validator has unexpected withdrawal credentials type",
 			wantDesc: `
 Timestamp: 2024-01-01 12:00:00 UTC
 Monitor: test_monitor
@@ -43,7 +43,7 @@ Code: 0x00`,
 			pubkey:    "0x123",
 			group:     "test_group",
 			monitor:   "test_monitor",
-			wantTitle: "[test_monitor] test_group validator has unexpected withdrawal credentials type",
+			wantTitle: "[test_monitor] Validator has unexpected withdrawal credentials type",
 			wantDesc: `
 Timestamp: 2024-01-01 12:00:00 UTC
 Monitor: test_monitor
@@ -58,7 +58,7 @@ Code: 0x01`,
 			pubkey:    "0x123",
 			group:     "test_group",
 			monitor:   "test_monitor",
-			wantTitle: "[test_monitor] test_group validator has unexpected withdrawal credentials type",
+			wantTitle: "[test_monitor] Validator has unexpected withdrawal credentials type",
 			wantDesc: `
 Timestamp: 2024-01-01 12:00:00 UTC
 Monitor: test_monitor
@@ -73,7 +73,7 @@ Code: 0xff`,
 			pubkey:    "0x123!@#",
 			group:     "test$%^",
 			monitor:   "test&*()",
-			wantTitle: "[test&*()] test$%^ validator has unexpected withdrawal credentials type",
+			wantTitle: "[test&*()] Validator has unexpected withdrawal credentials type",
 			wantDesc: `
 Timestamp: 2024-01-01 12:00:00 UTC
 Monitor: test&*()
@@ -102,8 +102,8 @@ Code: 0x00`,
 			// Test getters
 			assert.Equal(t, tt.monitor, evt.GetMonitor())
 			assert.Equal(t, tt.group, evt.GetGroup())
-			assert.Equal(t, tt.wantTitle, evt.GetTitle())
-			assert.Equal(t, tt.wantDesc, evt.GetDescription())
+			assert.Equal(t, tt.wantTitle, evt.GetTitle(true, true))
+			assert.Equal(t, tt.wantDesc, evt.GetDescriptionText(true, true))
 
 			// Test fields
 			assert.Equal(t, tt.timestamp, evt.Timestamp)

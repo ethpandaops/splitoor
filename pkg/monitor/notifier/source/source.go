@@ -22,7 +22,7 @@ type Source interface {
 	Publish(ctx context.Context, e event.Event) error
 }
 
-func NewSource(ctx context.Context, log logrus.FieldLogger, monitor, sourceName string, sourceType SourceType, config *RawMessage) (Source, error) {
+func NewSource(ctx context.Context, log logrus.FieldLogger, monitor, sourceName string, docs *string, sourceType SourceType, includeMonitorName, includeGroupName bool, config *RawMessage) (Source, error) {
 	if sourceType == SourceTypeUnknown {
 		return nil, errors.New("source type is required")
 	}
@@ -45,7 +45,7 @@ func NewSource(ctx context.Context, log logrus.FieldLogger, monitor, sourceName 
 			return nil, err
 		}
 
-		return discord.NewDiscord(ctx, log, monitor, sourceName, conf)
+		return discord.NewDiscord(ctx, log, monitor, sourceName, docs, includeMonitorName, includeGroupName, conf)
 	case SourceTypeSMTP:
 		conf := &smtp.Config{}
 
@@ -63,7 +63,7 @@ func NewSource(ctx context.Context, log logrus.FieldLogger, monitor, sourceName 
 			return nil, err
 		}
 
-		return smtp.NewSMTP(ctx, log, monitor, sourceName, conf)
+		return smtp.NewSMTP(ctx, log, monitor, sourceName, docs, includeMonitorName, includeGroupName, conf)
 	case SourceTypeSES:
 		conf := &ses.Config{}
 
@@ -81,7 +81,7 @@ func NewSource(ctx context.Context, log logrus.FieldLogger, monitor, sourceName 
 			return nil, err
 		}
 
-		return ses.NewSES(ctx, log, monitor, sourceName, conf)
+		return ses.NewSES(ctx, log, monitor, sourceName, docs, includeMonitorName, includeGroupName, conf)
 	case SourceTypeTelegram:
 		conf := &telegram.Config{}
 
@@ -99,7 +99,7 @@ func NewSource(ctx context.Context, log logrus.FieldLogger, monitor, sourceName 
 			return nil, err
 		}
 
-		return telegram.NewTelegram(ctx, log, monitor, sourceName, conf)
+		return telegram.NewTelegram(ctx, log, monitor, sourceName, docs, includeMonitorName, includeGroupName, conf)
 	}
 
 	return nil, errors.New("source type is not supported")

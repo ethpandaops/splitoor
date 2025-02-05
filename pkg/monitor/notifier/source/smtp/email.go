@@ -20,21 +20,28 @@ type SMTP struct {
 	name     string
 	smtpAuth smtp.Auth
 	metrics  *Metrics
+
+	includeMonitorName bool
+	includeGroupName   bool
+	docs               *string
 }
 
-func NewSMTP(ctx context.Context, log logrus.FieldLogger, monitor, name string, config *Config) (*SMTP, error) {
+func NewSMTP(ctx context.Context, log logrus.FieldLogger, monitor, name string, docs *string, includeMonitorName, includeGroupName bool, config *Config) (*SMTP, error) {
 	var auth smtp.Auth
 	if config.Username != "" {
 		auth = smtp.PlainAuth("", config.Username, config.Password, config.Host)
 	}
 
 	return &SMTP{
-		log:      log.WithField("source", "smtp"),
-		config:   config,
-		monitor:  monitor,
-		name:     name,
-		smtpAuth: auth,
-		metrics:  GetMetricsInstance("splitoor_notifier_smtp", monitor),
+		log:                log.WithField("source", "smtp"),
+		config:             config,
+		monitor:            monitor,
+		name:               name,
+		smtpAuth:           auth,
+		metrics:            GetMetricsInstance("splitoor_notifier_smtp", monitor),
+		includeMonitorName: includeMonitorName,
+		includeGroupName:   includeGroupName,
+		docs:               docs,
 	}, nil
 }
 
@@ -63,7 +70,14 @@ func (s *SMTP) GetConfig() *Config {
 }
 
 func (s *SMTP) Publish(ctx context.Context, evt event.Event) error {
-	if err := s.sendEmail(evt, evt.GetTitle(), evt.GetDescription()); err != nil {
+	description := evt.GetDescriptionText(s.includeMonitorName, s.includeGroupName)
+
+	if s.docs != nil {
+		docURL := strings.ReplaceAll(*s.docs, ":group", evt.GetGroup())
+		description = fmt.Sprintf("%s\n\nGo to docs: %s", description, docURL)
+	}
+
+	if err := s.sendEmail(evt, fmt.Sprintf("🚨 %s", evt.GetTitle(s.includeMonitorName, s.includeGroupName)), description); err != nil {
 		return err
 	}
 

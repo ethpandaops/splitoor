@@ -34,14 +34,26 @@ func (m *MockEvent) GetGroup() string {
 	return args.String(0)
 }
 
-func (m *MockEvent) GetTitle() string {
-	args := m.Called()
+func (m *MockEvent) GetTitle(includeMonitorName, includeGroupName bool) string {
+	args := m.Called(includeMonitorName, includeGroupName)
 
 	return args.String(0)
 }
 
-func (m *MockEvent) GetDescription() string {
-	args := m.Called()
+func (m *MockEvent) GetDescriptionText(includeMonitorName, includeGroupName bool) string {
+	args := m.Called(includeMonitorName, includeGroupName)
+
+	return args.String(0)
+}
+
+func (m *MockEvent) GetDescriptionMarkdown(includeMonitorName, includeGroupName bool) string {
+	args := m.Called(includeMonitorName, includeGroupName)
+
+	return args.String(0)
+}
+
+func (m *MockEvent) GetDescriptionHTML(includeMonitorName, includeGroupName bool) string {
+	args := m.Called(includeMonitorName, includeGroupName)
 
 	return args.String(0)
 }
@@ -67,7 +79,7 @@ func TestNewDiscord(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			log := logrus.New()
 			entry := log.WithField("test", "test")
-			discord, err := disc.NewDiscord(context.Background(), entry, tt.monitor, tt.name, tt.config)
+			discord, err := disc.NewDiscord(context.Background(), entry, tt.monitor, tt.name, nil, true, true, tt.config)
 
 			if tt.expectError {
 				assert.Error(t, err)
@@ -116,15 +128,15 @@ func TestDiscordPublish(t *testing.T) {
 
 			log := logrus.New()
 			entry := log.WithField("test", "test")
-			discord, err := disc.NewDiscord(context.Background(), entry, "test", "test_source", &disc.Config{
+			discord, err := disc.NewDiscord(context.Background(), entry, "test", "test_source", nil, true, true, &disc.Config{
 				Webhook: server.URL,
 			})
 			assert.NoError(t, err)
 
 			mockEvent := new(MockEvent)
-			mockEvent.On("GetGroup").Return("test_group").Times(2)
-			mockEvent.On("GetTitle").Return("Test Title").Once()
-			mockEvent.On("GetDescription").Return("Test Description").Once()
+			mockEvent.On("GetGroup").Return("test_group")
+			mockEvent.On("GetTitle", true, true).Return("Test Title")
+			mockEvent.On("GetDescriptionMarkdown", true, true).Return("Test Description")
 
 			err = discord.Publish(context.Background(), mockEvent)
 
@@ -142,7 +154,7 @@ func TestDiscordPublish(t *testing.T) {
 func TestDiscordStartStop(t *testing.T) {
 	log := logrus.New()
 	entry := log.WithField("test", "test")
-	discord, err := disc.NewDiscord(context.Background(), entry, "test", "test_source", &disc.Config{
+	discord, err := disc.NewDiscord(context.Background(), entry, "test", "test_source", nil, true, true, &disc.Config{
 		Webhook: "https://discord.com/api/webhooks/test",
 	})
 	assert.NoError(t, err)
@@ -157,7 +169,7 @@ func TestDiscordStartStop(t *testing.T) {
 func TestDiscordGetTypeAndName(t *testing.T) {
 	log := logrus.New()
 	entry := log.WithField("test", "test")
-	discord, err := disc.NewDiscord(context.Background(), entry, "test", "test_source", &disc.Config{
+	discord, err := disc.NewDiscord(context.Background(), entry, "test", "test_source", nil, true, true, &disc.Config{
 		Webhook: "https://discord.com/api/webhooks/test",
 	})
 	assert.NoError(t, err)

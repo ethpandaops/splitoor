@@ -226,6 +226,7 @@ func (g *Group) checkController(ctx context.Context) {
 
 		if actualController == nil {
 			g.log.WithField("node", node.Name()).Error("Controller is nil")
+			g.metrics.UpdateController(0, []string{g.name, node.Name(), g.address, g.controller.Address(), "nil", g.controller.Type()})
 
 			continue
 		}

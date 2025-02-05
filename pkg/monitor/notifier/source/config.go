@@ -3,9 +3,11 @@ package source
 import "errors"
 
 type Config struct {
-	SourceType SourceType  `yaml:"type"`
-	Name       string      `yaml:"name"`
-	Config     *RawMessage `yaml:"config"`
+	SourceType         SourceType  `yaml:"type"`
+	Name               string      `yaml:"name"`
+	Group              *string     `yaml:"group,omitempty"`
+	IncludeMonitorName bool        `yaml:"includeMonitorName"`
+	Config             *RawMessage `yaml:"config"`
 }
 
 type SourceType string

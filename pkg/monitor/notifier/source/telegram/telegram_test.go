@@ -36,14 +36,26 @@ func (m *MockEvent) GetGroup() string {
 	return args.String(0)
 }
 
-func (m *MockEvent) GetTitle() string {
-	args := m.Called()
+func (m *MockEvent) GetTitle(includeMonitorName, includeGroupName bool) string {
+	args := m.Called(includeMonitorName, includeGroupName)
 
 	return args.String(0)
 }
 
-func (m *MockEvent) GetDescription() string {
-	args := m.Called()
+func (m *MockEvent) GetDescriptionText(includeMonitorName, includeGroupName bool) string {
+	args := m.Called(includeMonitorName, includeGroupName)
+
+	return args.String(0)
+}
+
+func (m *MockEvent) GetDescriptionMarkdown(includeMonitorName, includeGroupName bool) string {
+	args := m.Called(includeMonitorName, includeGroupName)
+
+	return args.String(0)
+}
+
+func (m *MockEvent) GetDescriptionHTML(includeMonitorName, includeGroupName bool) string {
+	args := m.Called(includeMonitorName, includeGroupName)
 
 	return args.String(0)
 }
@@ -98,7 +110,7 @@ func TestNewTelegram(t *testing.T) {
 			entry := log.WithField("test", "test")
 
 			if tt.expectError {
-				telegram, err := tel.NewTelegram(context.Background(), entry.WithField("source", "telegram"), tt.monitor, tt.name, tt.config)
+				telegram, err := tel.NewTelegram(context.Background(), entry.WithField("source", "telegram"), tt.monitor, tt.name, nil, true, true, tt.config)
 				assert.Error(t, err)
 				assert.Nil(t, telegram)
 
@@ -106,7 +118,7 @@ func TestNewTelegram(t *testing.T) {
 			}
 
 			mockBot := setupMockBot()
-			telegram, err := tel.NewTelegramWithClient(entry.WithField("source", "telegram"), tt.monitor, tt.name, tt.config, mockBot)
+			telegram, err := tel.NewTelegramWithClient(entry.WithField("source", "telegram"), tt.monitor, tt.name, nil, true, true, tt.config, mockBot)
 			assert.NoError(t, err)
 			assert.NotNil(t, telegram)
 			assert.Equal(t, tt.name, telegram.GetName())
@@ -124,17 +136,20 @@ func TestTelegramPublish(t *testing.T) {
 
 	// Setup mock event
 	mockEvent.On("GetGroup").Return("test_group")
-	mockEvent.On("GetTitle").Return("Test Title")
-	mockEvent.On("GetDescription").Return("Test Description")
+	mockEvent.On("GetTitle", true, true).Return("Test Title")
+	mockEvent.On("GetDescriptionMarkdown", true, true).Return("Test Description")
 
-	// Setup mock bot expectations
+	// Setup mock bot expectations with correct params
 	mockBot.On("SendMessage", mock.Anything, &bot.SendMessageParams{
 		ChatID:    int64(123456789),
-		Text:      "<b>Test Title</b>\n\nTest Description",
-		ParseMode: "HTML",
+		Text:      "🚨 ***Test Title***\n\nTest Description",
+		ParseMode: "MarkdownV2",
+		LinkPreviewOptions: &models.LinkPreviewOptions{
+			IsDisabled: func() *bool { b := true; return &b }(),
+		},
 	}).Return(&models.Message{}, nil)
 
-	telegram, err := tel.NewTelegramWithClient(entry.WithField("source", "telegram"), "test", "test_source", &tel.Config{
+	telegram, err := tel.NewTelegramWithClient(entry.WithField("source", "telegram"), "test", "test_source", nil, true, true, &tel.Config{
 		BotToken: "test-token",
 		ChatID:   "123456789",
 	}, mockBot)
@@ -153,7 +168,10 @@ func TestTelegramStartStop(t *testing.T) {
 	entry := log.WithField("test", "test")
 	mockBot := setupMockBot()
 
-	telegram, err := tel.NewTelegramWithClient(entry.WithField("source", "telegram"), "test", "test_source", &tel.Config{BotToken: "test-token", ChatID: "123456789"}, mockBot)
+	telegram, err := tel.NewTelegramWithClient(entry.WithField("source", "telegram"), "test", "test_source", nil, true, true, &tel.Config{
+		BotToken: "test-token",
+		ChatID:   "123456789",
+	}, mockBot)
 	assert.NoError(t, err)
 
 	err = telegram.Start(context.Background())
@@ -168,7 +186,10 @@ func TestTelegramGetTypeAndName(t *testing.T) {
 	entry := log.WithField("test", "test")
 	mockBot := setupMockBot()
 
-	telegram, err := tel.NewTelegramWithClient(entry.WithField("source", "telegram"), "test", "test_source", &tel.Config{BotToken: "test-token", ChatID: "123456789"}, mockBot)
+	telegram, err := tel.NewTelegramWithClient(entry.WithField("source", "telegram"), "test", "test_source", nil, true, true, &tel.Config{
+		BotToken: "test-token",
+		ChatID:   "123456789",
+	}, mockBot)
 	assert.NoError(t, err)
 
 	assert.Equal(t, SourceType, telegram.GetType())

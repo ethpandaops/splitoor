@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"net/http"
 	"strconv"
+	"strings"
 
 	"github.com/ethpandaops/splitoor/pkg/monitor/event"
 	"github.com/sirupsen/logrus"
@@ -19,14 +20,21 @@ type Discord struct {
 	name    string
 	config  *Config
 	metrics *Metrics
+
+	includeMonitorName bool
+	includeGroupName   bool
+	docs               *string
 }
 
-func NewDiscord(ctx context.Context, log logrus.FieldLogger, monitor, name string, config *Config) (*Discord, error) {
+func NewDiscord(ctx context.Context, log logrus.FieldLogger, monitor, name string, docs *string, includeMonitorName, includeGroupName bool, config *Config) (*Discord, error) {
 	return &Discord{
-		log:     log.WithField("source", name),
-		name:    name,
-		config:  config,
-		metrics: GetMetricsInstance("splitoor_notifier_discord", monitor),
+		log:                log.WithField("source", name),
+		name:               name,
+		config:             config,
+		metrics:            GetMetricsInstance("splitoor_notifier_discord", monitor),
+		includeMonitorName: includeMonitorName,
+		includeGroupName:   includeGroupName,
+		docs:               docs,
 	}, nil
 }
 
@@ -66,12 +74,19 @@ func (c *Discord) Publish(ctx context.Context, e event.Event) error {
 		}
 	}()
 
+	description := e.GetDescriptionMarkdown(c.includeMonitorName, c.includeGroupName)
+
+	if c.docs != nil {
+		docURL := strings.ReplaceAll(*c.docs, ":group", e.GetGroup())
+		description = fmt.Sprintf("%s\n\n[**Go to docs**](%s)", description, docURL)
+	}
+
 	message := map[string]interface{}{
 		"username": "Splitoor",
 		"embeds": []map[string]interface{}{
 			{
-				"title":       e.GetTitle(),
-				"description": e.GetDescription(),
+				"title":       fmt.Sprintf("🚨 %s", e.GetTitle(c.includeMonitorName, c.includeGroupName)),
+				"description": description,
 				"color":       16711680,
 			},
 		},

@@ -28,13 +28,13 @@ func TestTransactionQueueExcess(t *testing.T) {
 			group:       "test_group",
 			safeAddress: "0x123",
 			count:       5,
-			wantTitle:   "[test_monitor] test_group safe has unexpected transactions in queue",
+			wantTitle:   "[test_monitor] Safe has unexpected transactions in queue",
 			wantDesc: `
 Timestamp: 2024-01-01 12:00:00 UTC
 Monitor: test_monitor
 Group: test_group
-Safe Account: 0x123 (https://app.safe.global/home?safe=0x123)
-Number of Transactions: 5 (https://app.safe.global/transactions/queue?safe=0x123)`,
+Safe Account: 0x123
+Number of Transactions: 5`,
 		},
 		{
 			name:        "large queue",
@@ -43,13 +43,13 @@ Number of Transactions: 5 (https://app.safe.global/transactions/queue?safe=0x123
 			group:       "test_group",
 			safeAddress: "0x123",
 			count:       100,
-			wantTitle:   "[test_monitor] test_group safe has unexpected transactions in queue",
+			wantTitle:   "[test_monitor] Safe has unexpected transactions in queue",
 			wantDesc: `
 Timestamp: 2024-01-01 12:00:00 UTC
 Monitor: test_monitor
 Group: test_group
-Safe Account: 0x123 (https://app.safe.global/home?safe=0x123)
-Number of Transactions: 100 (https://app.safe.global/transactions/queue?safe=0x123)`,
+Safe Account: 0x123
+Number of Transactions: 100`,
 		},
 		{
 			name:        "special characters",
@@ -58,13 +58,13 @@ Number of Transactions: 100 (https://app.safe.global/transactions/queue?safe=0x1
 			group:       "test$%^",
 			safeAddress: "0x123&*()",
 			count:       5,
-			wantTitle:   "[test!@#] test$%^ safe has unexpected transactions in queue",
+			wantTitle:   "[test!@#] Safe has unexpected transactions in queue",
 			wantDesc: `
 Timestamp: 2024-01-01 12:00:00 UTC
 Monitor: test!@#
 Group: test$%^
-Safe Account: 0x123&*() (https://app.safe.global/home?safe=0x123&*())
-Number of Transactions: 5 (https://app.safe.global/transactions/queue?safe=0x123&*())`,
+Safe Account: 0x123&*()
+Number of Transactions: 5`,
 		},
 	}
 
@@ -87,8 +87,8 @@ Number of Transactions: 5 (https://app.safe.global/transactions/queue?safe=0x123
 			// Test getters
 			assert.Equal(t, tt.monitor, evt.GetMonitor())
 			assert.Equal(t, tt.group, evt.GetGroup())
-			assert.Equal(t, tt.wantTitle, evt.GetTitle())
-			assert.Equal(t, tt.wantDesc, evt.GetDescription())
+			assert.Equal(t, tt.wantTitle, evt.GetTitle(true, true))
+			assert.Equal(t, tt.wantDesc, evt.GetDescriptionText(true, true))
 
 			// Test fields
 			assert.Equal(t, tt.timestamp, evt.Timestamp)
