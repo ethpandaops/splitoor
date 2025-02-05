@@ -49,9 +49,9 @@ type Safe struct {
 	publisher *notifier.Publisher
 }
 
-func New(ctx context.Context, log logrus.FieldLogger, monitor, name string, config *Config, splitAddress, splitsContractAddress string, ethereumPool *ethereum.Pool, safeClient safe.Client, publisher *notifier.Publisher) (*Safe, error) {
+func New(ctx context.Context, log logrus.FieldLogger, monitor, name string, config *Config, splitAddress, recoveryAddress, splitsContractAddress string, ethereumPool *ethereum.Pool, safeClient safe.Client, publisher *notifier.Publisher) (*Safe, error) {
 	// expected recipients when split is in recovery state
-	recoveryAccounts, recoveryAllocations, err := split.ParseRecipients([]string{splitAddress, config.RecoveryAddress}, []uint32{1, 999999})
+	recoveryAccounts, recoveryAllocations, err := split.ParseRecipients([]string{splitAddress, recoveryAddress}, []uint32{1, 999999})
 	if err != nil {
 		return nil, err
 	}

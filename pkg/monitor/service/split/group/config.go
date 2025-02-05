@@ -8,11 +8,12 @@ import (
 )
 
 type Config struct {
-	Name       string            `yaml:"name"`
-	Address    string            `yaml:"address"`
-	Contract   *string           `yaml:"contract"`
-	Accounts   []*account.Config `yaml:"accounts"`
-	Controller controller.Config `yaml:"controller"`
+	Name            string            `yaml:"name"`
+	Address         string            `yaml:"address"`
+	RecoveryAddress string            `yaml:"recoveryAddress"`
+	Contract        *string           `yaml:"contract"`
+	Accounts        []*account.Config `yaml:"accounts"`
+	Controller      controller.Config `yaml:"controller"`
 }
 
 func (c *Config) Validate() error {
@@ -26,6 +27,10 @@ func (c *Config) Validate() error {
 
 	if c.Address == "" {
 		return fmt.Errorf("address is required")
+	}
+
+	if c.RecoveryAddress == "" {
+		return fmt.Errorf("recoveryAddress is required")
 	}
 
 	totalAllocation := uint32(0)

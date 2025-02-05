@@ -5,43 +5,41 @@ import (
 	"time"
 )
 
-type Hash struct {
+type HashInitialState struct {
 	Timestamp    time.Time
 	SplitAddress string
-	ExpectedHash string
-	ActualHash   string
+	Hash         string
 	Group        string
 	Monitor      string
 }
 
 const (
-	HashType = "split_hash"
+	HashInitialStateType = "split_hash_initial_state"
 )
 
-func NewHash(timestamp time.Time, monitor, group, splitAddress, expectedHash, actualHash string) *Hash {
-	return &Hash{
+func NewHashInitialState(timestamp time.Time, monitor, group, splitAddress, hash string) *HashInitialState {
+	return &HashInitialState{
 		Timestamp:    timestamp,
 		SplitAddress: splitAddress,
-		ExpectedHash: expectedHash,
-		ActualHash:   actualHash,
+		Hash:         hash,
 		Group:        group,
 		Monitor:      monitor,
 	}
 }
 
-func (v *Hash) GetType() string {
-	return HashType
+func (v *HashInitialState) GetType() string {
+	return HashInitialStateType
 }
 
-func (v *Hash) GetGroup() string {
+func (v *HashInitialState) GetGroup() string {
 	return v.Group
 }
 
-func (v *Hash) GetMonitor() string {
+func (v *HashInitialState) GetMonitor() string {
 	return v.Monitor
 }
 
-func (v *Hash) GetTitle(includeMonitor, includeGroup bool) string {
+func (v *HashInitialState) GetTitle(includeMonitor, includeGroup bool) string {
 	var sb strings.Builder
 
 	if includeMonitor {
@@ -50,12 +48,12 @@ func (v *Hash) GetTitle(includeMonitor, includeGroup bool) string {
 		sb.WriteString("] ")
 	}
 
-	sb.WriteString("Split hash has changed")
+	sb.WriteString("Split hash is in initial state")
 
 	return sb.String()
 }
 
-func (v *Hash) GetDescriptionText(includeMonitor, includeGroup bool) string {
+func (v *HashInitialState) GetDescriptionText(includeMonitor, includeGroup bool) string {
 	var sb strings.Builder
 
 	sb.WriteString("\nTimestamp: ")
@@ -73,15 +71,13 @@ func (v *Hash) GetDescriptionText(includeMonitor, includeGroup bool) string {
 
 	sb.WriteString("\nSplit Address: ")
 	sb.WriteString(v.SplitAddress)
-	sb.WriteString("\nExpected Hash: ")
-	sb.WriteString(v.ExpectedHash)
-	sb.WriteString("\nActual Hash: ")
-	sb.WriteString(v.ActualHash)
+	sb.WriteString("\nHash: ")
+	sb.WriteString(v.Hash)
 
 	return sb.String()
 }
 
-func (v *Hash) GetDescriptionMarkdown(includeMonitor, includeGroup bool) string {
+func (v *HashInitialState) GetDescriptionMarkdown(includeMonitor, includeGroup bool) string {
 	var sb strings.Builder
 
 	sb.WriteString("**Timestamp:** ")
@@ -104,18 +100,14 @@ func (v *Hash) GetDescriptionMarkdown(includeMonitor, includeGroup bool) string 
 	sb.WriteString(v.SplitAddress)
 	sb.WriteString("`\n")
 
-	sb.WriteString("**Expected Hash:** `")
-	sb.WriteString(v.ExpectedHash)
+	sb.WriteString("**Hash:** `")
+	sb.WriteString(v.Hash)
 	sb.WriteString("`\n")
-
-	sb.WriteString("**Actual Hash:** `")
-	sb.WriteString(v.ActualHash)
-	sb.WriteString("`")
 
 	return sb.String()
 }
 
-func (v *Hash) GetDescriptionHTML(includeMonitor, includeGroup bool) string {
+func (v *HashInitialState) GetDescriptionHTML(includeMonitor, includeGroup bool) string {
 	var sb strings.Builder
 
 	sb.WriteString("<p><strong>Timestamp:</strong> ")
@@ -138,12 +130,8 @@ func (v *Hash) GetDescriptionHTML(includeMonitor, includeGroup bool) string {
 	sb.WriteString(v.SplitAddress)
 	sb.WriteString("</p>")
 
-	sb.WriteString("<p><strong>Expected Hash:</strong> ")
-	sb.WriteString(v.ExpectedHash)
-	sb.WriteString("</p>")
-
-	sb.WriteString("<p><strong>Actual Hash:</strong> ")
-	sb.WriteString(v.ActualHash)
+	sb.WriteString("<p><strong>Hash:</strong> ")
+	sb.WriteString(v.Hash)
 	sb.WriteString("</p>")
 
 	return sb.String()

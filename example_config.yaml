@@ -36,6 +36,7 @@ services:
       - name: "group-1"
         address: "0x0000000000000000000000000000000000000000" # split address
         contract: "0x0000000000000000000000000000000000000000" # 0xSplits v1 contract address, not needed for mainnet, holesky and sepolia
+        recoveryAddress: "0x0000000000000000000000000000000000000000" # address of the split update for recovery state
         accounts:
           - name: "account-1"
             address: "0x0000000000000000000000000000000000000000"
@@ -50,7 +51,6 @@ services:
           type: "safe"
           config:
             address: "0x0000000000000000000000000000000000000000" # safe address
-            recoveryAddress: "0x0000000000000000000000000000000000000000" # address of the split update for recovery state
   validator:
     groups:
       - name: "group-1"
