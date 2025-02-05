@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"net/url"
 	"strconv"
 	"strings"
 
@@ -77,7 +78,7 @@ func (c *Discord) Publish(ctx context.Context, e event.Event) error {
 	description := e.GetDescriptionMarkdown(c.includeMonitorName, c.includeGroupName)
 
 	if c.docs != nil {
-		docURL := strings.ReplaceAll(*c.docs, ":group", e.GetGroup())
+		docURL := strings.ReplaceAll(*c.docs, ":group", url.QueryEscape(e.GetGroup()))
 		description = fmt.Sprintf("%s\n\n[**Go to docs**](%s)", description, docURL)
 	}
 

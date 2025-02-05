@@ -3,6 +3,7 @@ package telegram
 import (
 	"context"
 	"fmt"
+	"net/url"
 	"strconv"
 	"strings"
 
@@ -102,7 +103,7 @@ func (t *Telegram) Publish(ctx context.Context, e event.Event) error {
 	description := e.GetDescriptionMarkdown(t.includeMonitorName, t.includeGroupName)
 
 	if t.docs != nil {
-		docURL := strings.ReplaceAll(*t.docs, ":group", e.GetGroup())
+		docURL := strings.ReplaceAll(*t.docs, ":group", url.QueryEscape(e.GetGroup()))
 		description = fmt.Sprintf("%s\n\n[**Go to docs**](%s)", description, docURL)
 	}
 
