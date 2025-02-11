@@ -3,8 +3,9 @@ package safe
 import "fmt"
 
 type Config struct {
-	Enabled  bool   `yaml:"enabled" default:"true"`
-	Endpoint string `yaml:"endpoint" default:"https://safe-client.safe.global"`
+	Enabled  bool     `yaml:"enabled" default:"true"`
+	Endpoint string   `yaml:"endpoint" default:"https://safe-client.safe.global"`
+	Signers  []string `yaml:"signers"`
 }
 
 func (c *Config) Validate() error {

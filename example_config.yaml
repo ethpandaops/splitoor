@@ -29,6 +29,9 @@ beaconchain:
 safe:
   enabled: true
   endpoint: "https://safe-client.safe.global"
+  signers:
+    - "0x0000000000000000000000000000000000000000"
+    - "0x0000000000000000000000000000000000000001"
 
 services:
   split:

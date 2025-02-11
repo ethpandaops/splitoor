@@ -126,3 +126,21 @@ type TokenInfo struct {
 	Decimals int    `json:"decimals"`
 	LogoURI  string `json:"logoUri"`
 }
+
+type SafeResponse struct {
+	Address                    AddressInfo   `json:"address"`
+	ChainID                    string        `json:"chainId"`
+	Nonce                      int           `json:"nonce"`
+	Threshold                  int           `json:"threshold"`
+	Owners                     []AddressInfo `json:"owners"`
+	Implementation             AddressInfo   `json:"implementation"`
+	ImplementationVersionState string        `json:"implementationVersionState"`
+	CollectiblesTag            *string       `json:"collectiblesTag"`
+	TxQueuedTag                string        `json:"txQueuedTag"`
+	TxHistoryTag               string        `json:"txHistoryTag"`
+	MessagesTag                *string       `json:"messagesTag"`
+	Modules                    *string       `json:"modules"`
+	FallbackHandler            *AddressInfo  `json:"fallbackHandler"`
+	Guard                      *AddressInfo  `json:"guard"`
+	Version                    string        `json:"version"`
+}

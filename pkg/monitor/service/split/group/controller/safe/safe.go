@@ -43,6 +43,7 @@ type Safe struct {
 	next          *alert.Next
 	missing       *alert.Missing
 	invalid       *alert.Invalid
+	signersAlert  *alert.Signers
 
 	metrics *Metrics
 
@@ -73,6 +74,7 @@ func New(ctx context.Context, log logrus.FieldLogger, monitor, name string, conf
 		next:                  alert.NewNext(log),
 		missing:               alert.NewMissing(log),
 		invalid:               alert.NewInvalid(log),
+		signersAlert:          alert.NewSigners(log),
 		metrics:               GetMetricsInstance("splitoor_split_controller", monitor),
 		publisher:             publisher,
 	}, nil
@@ -118,6 +120,22 @@ func (c *Safe) Address() string {
 }
 
 func (c *Safe) tick(ctx context.Context) {
+	match, err := c.safeClient.CheckSigners(ctx, c.address)
+	if err != nil {
+		c.log.WithError(err).Error("failed to check signers")
+
+		return
+	}
+
+	shouldAlert := c.signersAlert.Update(!match)
+	if shouldAlert {
+		c.log.Warn("Alerting signer mismatch")
+
+		if err := c.publisher.Publish(event.NewSignerMismatch(time.Now(), c.monitor, c.name, c.address)); err != nil {
+			c.log.WithError(err).Error("Error publishing signer mismatch alert")
+		}
+	}
+
 	queued, err := c.safeClient.GetQueuedTransactions(ctx, c.address)
 	if err != nil {
 		c.log.WithError(err).Error("failed to get queued transactions")
@@ -202,7 +220,7 @@ func (c *Safe) tick(ctx context.Context) {
 	/*
 	 * Always alert if the queue is too large
 	 */
-	shouldAlert := c.excessQueue.Update(len(txns))
+	shouldAlert = c.excessQueue.Update(len(txns))
 	if shouldAlert {
 		c.log.WithFields(logrus.Fields{
 			"length": len(txns),
