@@ -145,7 +145,11 @@ func TestTelegramPublish(t *testing.T) {
 		Text:      "🚨 ***Test Title***\n\nTest Description",
 		ParseMode: "MarkdownV2",
 		LinkPreviewOptions: &models.LinkPreviewOptions{
-			IsDisabled: func() *bool { b := true; return &b }(),
+			IsDisabled: func() *bool {
+				b := true
+
+				return &b
+			}(),
 		},
 	}).Return(&models.Message{}, nil)
 

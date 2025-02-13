@@ -131,8 +131,8 @@ func (c *Safe) tick(ctx context.Context) {
 	if shouldAlert {
 		c.log.Warn("Alerting signer mismatch")
 
-		if err := c.publisher.Publish(event.NewSignerMismatch(time.Now(), c.monitor, c.name, c.address)); err != nil {
-			c.log.WithError(err).Error("Error publishing signer mismatch alert")
+		if pErr := c.publisher.Publish(event.NewSignerMismatch(time.Now(), c.monitor, c.name, c.address)); pErr != nil {
+			c.log.WithError(pErr).Error("Error publishing signer mismatch alert")
 		}
 	}
 

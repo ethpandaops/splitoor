@@ -500,6 +500,7 @@ func TestClient_GetSafe(t *testing.T) {
 			resp, err := c.GetSafe(context.Background(), tt.safeAddress)
 			if tt.wantErr {
 				assert.Error(t, err)
+
 				return
 			}
 
@@ -622,6 +623,7 @@ func TestClient_CheckSigners(t *testing.T) {
 			match, err := c.CheckSigners(context.Background(), tt.safeAddress)
 			if tt.wantErr {
 				assert.Error(t, err)
+
 				return
 			}
 
