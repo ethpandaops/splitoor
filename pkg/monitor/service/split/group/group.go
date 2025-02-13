@@ -34,18 +34,24 @@ type Group struct {
 	ethereumPool *ethereum.Pool
 	safeClient   safe.Client
 
-	address     string
-	client      *spl.Client
-	contractABI *ethcoder.ABI
-	contract    string
-	hash        string
-	accounts    []*account.Account
-	controller  controller.Controller
+	address         string
+	recoveryAddress string
+
+	client       *spl.Client
+	contractABI  *ethcoder.ABI
+	contract     string
+	initialHash  string
+	recoveryHash string
+	stableHash   string
+	accounts     []*account.Account
+	controller   controller.Controller
 
 	metrics *Metrics
 
-	hashAlert       *alert.Hash
-	controllerAlert *alert.Controller
+	hashUnknownAlert  *alert.HashUnknown
+	hashInitialAlert  *alert.HashInitial
+	hashRecoveryAlert *alert.HashRecovery
+	controllerAlert   *alert.Controller
 }
 
 func NewGroup(ctx context.Context, log logrus.FieldLogger, monitor string, conf *Config, ethereumPool *ethereum.Pool, publisher *notifier.Publisher, safeClient safe.Client) (*Group, error) {
@@ -63,25 +69,28 @@ func NewGroup(ctx context.Context, log logrus.FieldLogger, monitor string, conf 
 		accounts[i] = account.NewAccount(log, monitor, conf.Name, acc.Address, acc.Allocation, acc.Monitor, ethereumPool)
 	}
 
-	ctr, err := controller.NewController(ctx, log, monitor, conf.Name, conf.Controller.ControllerType, conf.Controller.Config, conf.Address, c, ethereumPool, safeClient, publisher)
+	ctr, err := controller.NewController(ctx, log, monitor, conf.Name, conf.Controller.ControllerType, conf.Controller.Config, conf.Address, conf.RecoveryAddress, c, ethereumPool, safeClient, publisher)
 	if err != nil {
 		return nil, err
 	}
 
 	return &Group{
-		log:             log.WithField("split", conf.Name),
-		name:            conf.Name,
-		monitor:         monitor,
-		publisher:       publisher,
-		ethereumPool:    ethereumPool,
-		safeClient:      safeClient,
-		address:         conf.Address,
-		contract:        c,
-		accounts:        accounts,
-		controller:      ctr,
-		metrics:         GetMetricsInstance("splitoor_split", monitor),
-		hashAlert:       nil,
-		controllerAlert: alert.NewController(log, ctr.Address()),
+		log:               log.WithField("split", conf.Name),
+		name:              conf.Name,
+		monitor:           monitor,
+		publisher:         publisher,
+		ethereumPool:      ethereumPool,
+		safeClient:        safeClient,
+		address:           conf.Address,
+		recoveryAddress:   conf.RecoveryAddress,
+		contract:          c,
+		accounts:          accounts,
+		controller:        ctr,
+		metrics:           GetMetricsInstance("splitoor_split", monitor),
+		hashUnknownAlert:  nil,
+		hashInitialAlert:  nil,
+		hashRecoveryAlert: nil,
+		controllerAlert:   alert.NewController(log, ctr.Address()),
 	}, nil
 }
 
@@ -180,6 +189,7 @@ func (g *Group) setupSplit(ctx context.Context) error {
 		account.SetContract(g.contractABI)
 	}
 
+	// stable hash accounts and allocations
 	accounts := []string{}
 	allocations := []uint32{}
 
@@ -188,19 +198,39 @@ func (g *Group) setupSplit(ctx context.Context) error {
 		allocations = append(allocations, account.Allocation())
 	}
 
-	hashParams := &spl.HashParams{
-		Accounts:              accounts,
-		PercentageAllocations: allocations,
-	}
-
-	hash, err := g.client.CalculateHash(hashParams)
+	// Calculate the stable hash of the split
+	g.stableHash, err = calculateHash(accounts, allocations)
 	if err != nil {
-		return errors.Wrap(err, "failed to calculate hash")
+		return errors.Wrap(err, "failed to calculate stable hash")
 	}
 
-	g.hash = hex.EncodeToString(hash)
+	// initial hash accounts and allocations
+	g.initialHash, err = calculateHash([]string{
+		g.recoveryAddress,
+		g.controller.Address(),
+	}, []uint32{
+		999999,
+		1,
+	})
+	if err != nil {
+		return errors.Wrap(err, "failed to calculate initial hash")
+	}
 
-	g.hashAlert = alert.NewHash(g.log, g.hash)
+	// recovery hash accounts and allocations
+	g.recoveryHash, err = calculateHash([]string{
+		g.address,
+		g.recoveryAddress,
+	}, []uint32{
+		1,
+		999999,
+	})
+	if err != nil {
+		return errors.Wrap(err, "failed to calculate recovery hash")
+	}
+
+	g.hashUnknownAlert = alert.NewHashUnknown(g.log, []string{g.initialHash, g.stableHash, g.recoveryHash})
+	g.hashInitialAlert = alert.NewHashInitial(g.log, g.initialHash)
+	g.hashRecoveryAlert = alert.NewHashRecovery(g.log, g.recoveryHash)
 
 	return nil
 }
@@ -220,6 +250,15 @@ func (g *Group) checkController(ctx context.Context) {
 		actualController, err := g.client.GetController(ctx, node, g.contractABI)
 		if err != nil {
 			g.log.WithError(err).Error("Error fetching controller")
+
+			continue
+		}
+
+		if actualController == nil {
+			g.log.WithField("node", node.Name()).Error("Controller is nil")
+			g.metrics.UpdateController(0, []string{g.name, node.Name(), g.address, g.controller.Address(), "nil", g.controller.Type()})
+
+			continue
 		}
 
 		val := float64(0)
@@ -227,7 +266,7 @@ func (g *Group) checkController(ctx context.Context) {
 			val = 1
 		}
 
-		g.metrics.UpdateController(val, []string{g.name, node.Name(), g.address, g.controller.Address(), *actualController})
+		g.metrics.UpdateController(val, []string{g.name, node.Name(), g.address, g.controller.Address(), *actualController, g.controller.Type()})
 
 		shouldAlert := g.controllerAlert.Update(*actualController)
 		if shouldAlert {
@@ -263,27 +302,73 @@ func (g *Group) checkHash(ctx context.Context) {
 
 		actualHashString := hex.EncodeToString(actualHash[:])
 
-		val := float64(0)
-		if actualHashString == g.hash {
-			val = 1
+		stableHashVal := float64(0)
+		if actualHashString == g.stableHash {
+			stableHashVal = 1
 		}
 
-		g.metrics.UpdateHash(val, []string{g.name, node.Name(), g.address, g.hash, actualHashString})
+		initialHashVal := float64(0)
+		if actualHashString == g.initialHash {
+			initialHashVal = 1
+		}
 
-		shouldAlert := g.hashAlert.Update(actualHashString)
-		if shouldAlert {
+		recoveryHashVal := float64(0)
+		if actualHashString == g.recoveryHash {
+			recoveryHashVal = 1
+		}
+
+		g.metrics.UpdateHashStable(stableHashVal, []string{g.name, node.Name(), g.address, g.stableHash, actualHashString})
+		g.metrics.UpdateHashInitial(initialHashVal, []string{g.name, node.Name(), g.address, g.initialHash, actualHashString})
+		g.metrics.UpdateHashRecovery(recoveryHashVal, []string{g.name, node.Name(), g.address, g.recoveryHash, actualHashString})
+
+		shouldAlertUnknown := g.hashUnknownAlert.Update(actualHashString)
+		if shouldAlertUnknown {
 			g.log.WithFields(logrus.Fields{
 				"split_address": g.address,
-				"expected_hash": g.hash,
+				"expected_hash": g.stableHash,
 				"actual_hash":   actualHashString,
-			}).Warn("Alerting hash mismatch")
+			}).Warn("Alerting stable hash unknown")
 
-			if err := g.publisher.Publish(event.NewHash(time.Now(), g.monitor, g.name, g.address, g.hash, actualHashString)); err != nil {
+			if err := g.publisher.Publish(event.NewHashUnknownState(time.Now(), g.monitor, g.name, g.address, g.stableHash, actualHashString)); err != nil {
 				g.log.WithError(err).WithFields(logrus.Fields{
 					"split_address": g.address,
-					"expected_hash": g.hash,
+					"expected_hash": g.stableHash,
 					"actual_hash":   actualHashString,
-				}).Error("Error publishing hash mismatch alert")
+				}).Error("Error publishing hash unknown alert")
+			}
+		}
+
+		shouldAlertInitial := g.hashInitialAlert.Update(actualHashString)
+		if shouldAlertInitial {
+			g.log.WithFields(logrus.Fields{
+				"split_address": g.address,
+				"expected_hash": g.initialHash,
+				"actual_hash":   actualHashString,
+			}).Warn("Alerting in initial hash state")
+
+			if err := g.publisher.Publish(event.NewHashInitialState(time.Now(), g.monitor, g.name, g.address, actualHashString)); err != nil {
+				g.log.WithError(err).WithFields(logrus.Fields{
+					"split_address": g.address,
+					"expected_hash": g.initialHash,
+					"actual_hash":   actualHashString,
+				}).Error("Error publishing in initial hash state alert")
+			}
+		}
+
+		shouldAlertRecovery := g.hashRecoveryAlert.Update(actualHashString)
+		if shouldAlertRecovery {
+			g.log.WithFields(logrus.Fields{
+				"split_address": g.address,
+				"expected_hash": g.recoveryHash,
+				"actual_hash":   actualHashString,
+			}).Warn("Alerting in recovery hash state")
+
+			if err := g.publisher.Publish(event.NewHashRecoveryState(time.Now(), g.monitor, g.name, g.address, actualHashString)); err != nil {
+				g.log.WithError(err).WithFields(logrus.Fields{
+					"split_address": g.address,
+					"expected_hash": g.recoveryHash,
+					"actual_hash":   actualHashString,
+				}).Error("Error publishing in recovery hash state alert")
 			}
 		}
 	}

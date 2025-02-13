@@ -11,15 +11,14 @@ import (
 	"github.com/ethpandaops/splitoor/pkg/monitor/event/split"
 )
 
-func TestHash(t *testing.T) {
+func TestHashInitialState(t *testing.T) {
 	tests := []struct {
 		name         string
 		timestamp    time.Time
 		monitor      string
 		group        string
 		splitAddress string
-		expectedHash string
-		actualHash   string
+		hash         string
 		wantTitle    string
 		wantDesc     string
 	}{
@@ -29,33 +28,14 @@ func TestHash(t *testing.T) {
 			monitor:      "test_monitor",
 			group:        "test_group",
 			splitAddress: "0x123",
-			expectedHash: "0x456",
-			actualHash:   "0x789",
-			wantTitle:    "[test_monitor] test_group split hash has changed",
+			hash:         "0x456",
+			wantTitle:    "[test_monitor] Split hash is in initial state",
 			wantDesc: `
 Timestamp: 2024-01-01 12:00:00 UTC
 Monitor: test_monitor
 Group: test_group
 Split Address: 0x123
-Expected Hash: 0x456
-Actual Hash: 0x789`,
-		},
-		{
-			name:         "same hash",
-			timestamp:    time.Date(2024, 1, 1, 12, 0, 0, 0, time.UTC),
-			monitor:      "test_monitor",
-			group:        "test_group",
-			splitAddress: "0x123",
-			expectedHash: "0x456",
-			actualHash:   "0x456",
-			wantTitle:    "[test_monitor] test_group split hash has changed",
-			wantDesc: `
-Timestamp: 2024-01-01 12:00:00 UTC
-Monitor: test_monitor
-Group: test_group
-Split Address: 0x123
-Expected Hash: 0x456
-Actual Hash: 0x456`,
+Hash: 0x456`,
 		},
 		{
 			name:         "special characters",
@@ -63,33 +43,29 @@ Actual Hash: 0x456`,
 			monitor:      "test!@#",
 			group:        "test$%^",
 			splitAddress: "0x123&*()",
-			expectedHash: "0x456{}[]",
-			actualHash:   "0x789<>?",
-			wantTitle:    "[test!@#] test$%^ split hash has changed",
+			hash:         "0x456{}[]",
+			wantTitle:    "[test!@#] Split hash is in initial state",
 			wantDesc: `
 Timestamp: 2024-01-01 12:00:00 UTC
 Monitor: test!@#
 Group: test$%^
 Split Address: 0x123&*()
-Expected Hash: 0x456{}[]
-Actual Hash: 0x789<>?`,
+Hash: 0x456{}[]`,
 		},
 		{
-			name:         "empty hashes",
+			name:         "empty hash",
 			timestamp:    time.Date(2024, 1, 1, 12, 0, 0, 0, time.UTC),
 			monitor:      "test_monitor",
 			group:        "test_group",
 			splitAddress: "",
-			expectedHash: "",
-			actualHash:   "",
-			wantTitle:    "[test_monitor] test_group split hash has changed",
+			hash:         "",
+			wantTitle:    "[test_monitor] Split hash is in initial state",
 			wantDesc: `
 Timestamp: 2024-01-01 12:00:00 UTC
 Monitor: test_monitor
 Group: test_group
 Split Address: 
-Expected Hash: 
-Actual Hash: `,
+Hash: `,
 		},
 		{
 			name:         "very long strings",
@@ -97,16 +73,14 @@ Actual Hash: `,
 			monitor:      strings.Repeat("m", 100),
 			group:        strings.Repeat("g", 100),
 			splitAddress: "0x" + strings.Repeat("1", 64),
-			expectedHash: "0x" + strings.Repeat("2", 64),
-			actualHash:   "0x" + strings.Repeat("3", 64),
-			wantTitle:    "[" + strings.Repeat("m", 100) + "] " + strings.Repeat("g", 100) + " split hash has changed",
+			hash:         "0x" + strings.Repeat("2", 64),
+			wantTitle:    "[" + strings.Repeat("m", 100) + "] Split hash is in initial state",
 			wantDesc: `
 Timestamp: 2024-01-01 12:00:00 UTC
 Monitor: ` + strings.Repeat("m", 100) + `
 Group: ` + strings.Repeat("g", 100) + `
 Split Address: 0x` + strings.Repeat("1", 64) + `
-Expected Hash: 0x` + strings.Repeat("2", 64) + `
-Actual Hash: 0x` + strings.Repeat("3", 64),
+Hash: 0x` + strings.Repeat("2", 64),
 		},
 		{
 			name:         "unicode characters",
@@ -114,16 +88,14 @@ Actual Hash: 0x` + strings.Repeat("3", 64),
 			monitor:      "测试监控器",
 			group:        "测试组",
 			splitAddress: "0x测试地址",
-			expectedHash: "0x预期哈希",
-			actualHash:   "0x实际哈希",
-			wantTitle:    "[测试监控器] 测试组 split hash has changed",
+			hash:         "0x预期哈希",
+			wantTitle:    "[测试监控器] Split hash is in initial state",
 			wantDesc: `
 Timestamp: 2024-01-01 12:00:00 UTC
 Monitor: 测试监控器
 Group: 测试组
 Split Address: 0x测试地址
-Expected Hash: 0x预期哈希
-Actual Hash: 0x实际哈希`,
+Hash: 0x预期哈希`,
 		},
 		{
 			name:         "edge timestamp",
@@ -131,47 +103,43 @@ Actual Hash: 0x实际哈希`,
 			monitor:      "test_monitor",
 			group:        "test_group",
 			splitAddress: "0x123",
-			expectedHash: "0x456",
-			actualHash:   "0x789",
-			wantTitle:    "[test_monitor] test_group split hash has changed",
+			hash:         "0x456",
+			wantTitle:    "[test_monitor] Split hash is in initial state",
 			wantDesc: `
 Timestamp: 9999-12-31 23:59:59 UTC
 Monitor: test_monitor
 Group: test_group
 Split Address: 0x123
-Expected Hash: 0x456
-Actual Hash: 0x789`,
+Hash: 0x456`,
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			evt := split.NewHash(
+			evt := split.NewHashInitialState(
 				tt.timestamp,
 				tt.monitor,
 				tt.group,
 				tt.splitAddress,
-				tt.expectedHash,
-				tt.actualHash,
+				tt.hash,
 			)
 
 			// Verify it implements Event interface
 			var _ event.Event = evt
 
 			// Test type constant
-			assert.Equal(t, split.HashType, evt.GetType())
+			assert.Equal(t, split.HashInitialStateType, evt.GetType())
 
 			// Test getters
 			assert.Equal(t, tt.monitor, evt.GetMonitor())
 			assert.Equal(t, tt.group, evt.GetGroup())
-			assert.Equal(t, tt.wantTitle, evt.GetTitle())
-			assert.Equal(t, tt.wantDesc, evt.GetDescription())
+			assert.Equal(t, tt.wantTitle, evt.GetTitle(true, true))
+			assert.Equal(t, tt.wantDesc, evt.GetDescriptionText(true, true))
 
 			// Test fields
 			assert.Equal(t, tt.timestamp, evt.Timestamp)
 			assert.Equal(t, tt.splitAddress, evt.SplitAddress)
-			assert.Equal(t, tt.expectedHash, evt.ExpectedHash)
-			assert.Equal(t, tt.actualHash, evt.ActualHash)
+			assert.Equal(t, tt.hash, evt.Hash)
 		})
 	}
 }

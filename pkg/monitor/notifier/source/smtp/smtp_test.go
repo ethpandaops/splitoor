@@ -32,13 +32,19 @@ func (m *MockEvent) GetGroup() string {
 	return args.String(0)
 }
 
-func (m *MockEvent) GetTitle() string {
+func (m *MockEvent) GetTitle(includeMonitorName, includeGroupName bool) string {
 	args := m.Called()
 
 	return args.String(0)
 }
 
-func (m *MockEvent) GetDescription() string {
+func (m *MockEvent) GetDescriptionText(includeMonitorName, includeGroupName bool) string {
+	args := m.Called()
+
+	return args.String(0)
+}
+
+func (m *MockEvent) GetDescriptionMarkdown(includeMonitorName, includeGroupName bool) string {
 	args := m.Called()
 
 	return args.String(0)
@@ -70,7 +76,7 @@ func TestNewSMTP(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			log := logrus.New()
 			entry := log.WithField("test", "test")
-			smtp, err := email.NewSMTP(context.Background(), entry, tt.monitor, tt.name, tt.config)
+			smtp, err := email.NewSMTP(context.Background(), entry, tt.monitor, tt.name, nil, true, true, tt.config)
 
 			if tt.expectError {
 				assert.Error(t, err)
@@ -88,7 +94,7 @@ func TestNewSMTP(t *testing.T) {
 func TestSMTPStartStop(t *testing.T) {
 	log := logrus.New()
 	entry := log.WithField("test", "test")
-	smtp, err := email.NewSMTP(context.Background(), entry, "test", "test_source", &email.Config{
+	smtp, err := email.NewSMTP(context.Background(), entry, "test", "test_source", nil, true, true, &email.Config{
 		Host:     "smtp.example.com",
 		Port:     587,
 		Username: "test@example.com",
@@ -108,7 +114,7 @@ func TestSMTPStartStop(t *testing.T) {
 func TestSMTPGetTypeAndName(t *testing.T) {
 	log := logrus.New()
 	entry := log.WithField("test", "test")
-	smtp, err := email.NewSMTP(context.Background(), entry, "test", "test_source", &email.Config{
+	smtp, err := email.NewSMTP(context.Background(), entry, "test", "test_source", nil, true, true, &email.Config{
 		Host:     "smtp.example.com",
 		Port:     587,
 		Username: "test@example.com",

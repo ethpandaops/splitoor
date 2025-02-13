@@ -7,9 +7,11 @@ import (
 )
 
 type Metrics struct {
-	balance    *prometheus.GaugeVec
-	hash       *prometheus.GaugeVec
-	controller *prometheus.GaugeVec
+	balance      *prometheus.GaugeVec
+	hashStable   *prometheus.GaugeVec
+	hashInitial  *prometheus.GaugeVec
+	hashRecovery *prometheus.GaugeVec
+	controller   *prometheus.GaugeVec
 }
 
 var (
@@ -31,11 +33,29 @@ func GetMetricsInstance(namespace, monitor string) *Metrics {
 				},
 				[]string{"group", "source", "split_address"},
 			),
-			hash: prometheus.NewGaugeVec(
+			hashStable: prometheus.NewGaugeVec(
 				prometheus.GaugeOpts{
 					Namespace:   namespace,
-					Name:        "hash",
-					Help:        "The hash of the split matches expected hash.",
+					Name:        "hash_stable",
+					Help:        "The hash of the split matches expected stable hash.",
+					ConstLabels: constLabels,
+				},
+				[]string{"group", "source", "split_address", "expected_hash", "actual_hash"},
+			),
+			hashInitial: prometheus.NewGaugeVec(
+				prometheus.GaugeOpts{
+					Namespace:   namespace,
+					Name:        "hash_initial",
+					Help:        "The hash of the split matches expected initial hash.",
+					ConstLabels: constLabels,
+				},
+				[]string{"group", "source", "split_address", "expected_hash", "actual_hash"},
+			),
+			hashRecovery: prometheus.NewGaugeVec(
+				prometheus.GaugeOpts{
+					Namespace:   namespace,
+					Name:        "hash_recovery",
+					Help:        "The hash of the split matches expected recovery hash.",
 					ConstLabels: constLabels,
 				},
 				[]string{"group", "source", "split_address", "expected_hash", "actual_hash"},
@@ -47,12 +67,14 @@ func GetMetricsInstance(namespace, monitor string) *Metrics {
 					Help:        "The controller of the split matches expected controller.",
 					ConstLabels: constLabels,
 				},
-				[]string{"group", "source", "split_address", "expected_controller", "actual_controller"},
+				[]string{"group", "source", "split_address", "expected_controller", "actual_controller", "type"},
 			),
 		}
 
 		prometheus.MustRegister(metricsInstance.balance)
-		prometheus.MustRegister(metricsInstance.hash)
+		prometheus.MustRegister(metricsInstance.hashStable)
+		prometheus.MustRegister(metricsInstance.hashInitial)
+		prometheus.MustRegister(metricsInstance.hashRecovery)
 		prometheus.MustRegister(metricsInstance.controller)
 	})
 
@@ -63,8 +85,16 @@ func (m Metrics) UpdateBalance(balance float64, labels []string) {
 	m.balance.WithLabelValues(labels...).Set(balance)
 }
 
-func (m Metrics) UpdateHash(hash float64, labels []string) {
-	m.hash.WithLabelValues(labels...).Set(hash)
+func (m Metrics) UpdateHashStable(hash float64, labels []string) {
+	m.hashStable.WithLabelValues(labels...).Set(hash)
+}
+
+func (m Metrics) UpdateHashInitial(hash float64, labels []string) {
+	m.hashInitial.WithLabelValues(labels...).Set(hash)
+}
+
+func (m Metrics) UpdateHashRecovery(hash float64, labels []string) {
+	m.hashRecovery.WithLabelValues(labels...).Set(hash)
 }
 
 func (m Metrics) UpdateController(controller float64, labels []string) {

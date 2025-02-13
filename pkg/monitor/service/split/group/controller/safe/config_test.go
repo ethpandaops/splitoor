@@ -15,9 +15,8 @@ func TestConfigValidate(t *testing.T) {
 		{
 			name: "valid config - with recovery",
 			config: &Config{
-				Address:         "0x123",
-				MinSignatures:   2,
-				RecoveryAddress: "0x456",
+				Address:       "0x123",
+				MinSignatures: 2,
 			},
 			expectError: false,
 		},

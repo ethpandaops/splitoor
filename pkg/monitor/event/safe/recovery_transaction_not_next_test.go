@@ -28,13 +28,13 @@ func TestRecoveryTransactionNotNext(t *testing.T) {
 			group:       "test_group",
 			safeAddress: "0x123",
 			txID:        "tx_123",
-			wantTitle:   "[test_monitor] test_group safe account has a recovery transaction that is not next in queue",
+			wantTitle:   "[test_monitor] Safe account has a recovery transaction that is not next in queue",
 			wantDesc: `
 Timestamp: 2024-01-01 12:00:00 UTC
 Monitor: test_monitor
 Group: test_group
-Safe Account: 0x123 (https://app.safe.global/home?safe=0x123)
-Recovery Transaction: tx_123 (https://app.safe.global/transactions/queue?safe=0x123)`,
+Safe Account: 0x123
+Recovery Transaction: tx_123`,
 		},
 		{
 			name:        "special characters",
@@ -43,13 +43,13 @@ Recovery Transaction: tx_123 (https://app.safe.global/transactions/queue?safe=0x
 			group:       "test$%^",
 			safeAddress: "0x123&*()",
 			txID:        "tx_123!@#",
-			wantTitle:   "[test!@#] test$%^ safe account has a recovery transaction that is not next in queue",
+			wantTitle:   "[test!@#] Safe account has a recovery transaction that is not next in queue",
 			wantDesc: `
 Timestamp: 2024-01-01 12:00:00 UTC
 Monitor: test!@#
 Group: test$%^
-Safe Account: 0x123&*() (https://app.safe.global/home?safe=0x123&*())
-Recovery Transaction: tx_123!@# (https://app.safe.global/transactions/queue?safe=0x123&*())`,
+Safe Account: 0x123&*()
+Recovery Transaction: tx_123!@#`,
 		},
 	}
 
@@ -72,8 +72,8 @@ Recovery Transaction: tx_123!@# (https://app.safe.global/transactions/queue?safe
 			// Test getters
 			assert.Equal(t, tt.monitor, evt.GetMonitor())
 			assert.Equal(t, tt.group, evt.GetGroup())
-			assert.Equal(t, tt.wantTitle, evt.GetTitle())
-			assert.Equal(t, tt.wantDesc, evt.GetDescription())
+			assert.Equal(t, tt.wantTitle, evt.GetTitle(true, true))
+			assert.Equal(t, tt.wantDesc, evt.GetDescriptionText(true, true))
 
 			// Test fields
 			assert.Equal(t, tt.timestamp, evt.Timestamp)

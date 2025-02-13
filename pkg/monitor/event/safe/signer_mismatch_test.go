@@ -10,15 +10,17 @@ import (
 	"github.com/ethpandaops/splitoor/pkg/monitor/event/safe"
 )
 
-func TestRecoveryTransactionMissing(t *testing.T) {
+func TestSignerMismatch(t *testing.T) {
 	tests := []struct {
-		name        string
-		timestamp   time.Time
-		monitor     string
-		group       string
-		safeAddress string
-		wantTitle   string
-		wantDesc    string
+		name         string
+		timestamp    time.Time
+		monitor      string
+		group        string
+		safeAddress  string
+		wantTitle    string
+		wantDesc     string
+		wantDescMD   string
+		wantDescHTML string
 	}{
 		{
 			name:        "basic event",
@@ -26,12 +28,17 @@ func TestRecoveryTransactionMissing(t *testing.T) {
 			monitor:     "test_monitor",
 			group:       "test_group",
 			safeAddress: "0x123",
-			wantTitle:   "[test_monitor] Safe account has no recovery transaction queued",
+			wantTitle:   "[test_monitor] Safe account has unexpected owners",
 			wantDesc: `
 Timestamp: 2024-01-01 12:00:00 UTC
 Monitor: test_monitor
 Group: test_group
 Safe Account: 0x123`,
+			wantDescMD: `**Timestamp:** 2024-01-01 12:00:00 UTC
+**Monitor:** test_monitor
+**Group:** test_group
+**Safe Account:** ` + "`0x123`",
+			wantDescHTML: `<p><strong>Timestamp:</strong> 2024-01-01 12:00:00 UTC</p><p><strong>Monitor:</strong> test_monitor</p><p><strong>Group:</strong> test_group</p><p><strong>Safe Account:</strong> 0x123</p>`,
 		},
 		{
 			name:        "special characters",
@@ -39,18 +46,23 @@ Safe Account: 0x123`,
 			monitor:     "test!@#",
 			group:       "test$%^",
 			safeAddress: "0x123&*()",
-			wantTitle:   "[test!@#] Safe account has no recovery transaction queued",
+			wantTitle:   "[test!@#] Safe account has unexpected owners",
 			wantDesc: `
 Timestamp: 2024-01-01 12:00:00 UTC
 Monitor: test!@#
 Group: test$%^
 Safe Account: 0x123&*()`,
+			wantDescMD: `**Timestamp:** 2024-01-01 12:00:00 UTC
+**Monitor:** test!@#
+**Group:** test$%^
+**Safe Account:** ` + "`0x123&*()`",
+			wantDescHTML: `<p><strong>Timestamp:</strong> 2024-01-01 12:00:00 UTC</p><p><strong>Monitor:</strong> test!@#</p><p><strong>Group:</strong> test$%^</p><p><strong>Safe Account:</strong> 0x123&*()</p>`,
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			evt := safe.NewRecoveryTransactionMissing(
+			evt := safe.NewSignerMismatch(
 				tt.timestamp,
 				tt.monitor,
 				tt.group,
@@ -61,13 +73,15 @@ Safe Account: 0x123&*()`,
 			var _ event.Event = evt
 
 			// Test type constant
-			assert.Equal(t, safe.RecoveryTransactionMissingType, evt.GetType())
+			assert.Equal(t, safe.SignerMismatchType, evt.GetType())
 
 			// Test getters
 			assert.Equal(t, tt.monitor, evt.GetMonitor())
-			assert.Equal(t, tt.group, evt.GetGroup())
+			assert.Equal(t, "safe", evt.GetGroup())
 			assert.Equal(t, tt.wantTitle, evt.GetTitle(true, true))
 			assert.Equal(t, tt.wantDesc, evt.GetDescriptionText(true, true))
+			assert.Equal(t, tt.wantDescMD, evt.GetDescriptionMarkdown(true, true))
+			assert.Equal(t, tt.wantDescHTML, evt.GetDescriptionHTML(true, true))
 
 			// Test fields
 			assert.Equal(t, tt.timestamp, evt.Timestamp)

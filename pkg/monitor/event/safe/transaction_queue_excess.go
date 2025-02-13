@@ -2,6 +2,7 @@ package safe
 
 import (
 	"fmt"
+	"strings"
 	"time"
 )
 
@@ -39,15 +40,100 @@ func (v *TransactionQueueExcess) GetMonitor() string {
 	return v.Monitor
 }
 
-func (v *TransactionQueueExcess) GetTitle() string {
-	return fmt.Sprintf("[%s] %s safe has unexpected transactions in queue", v.Monitor, v.Group)
+func (v *TransactionQueueExcess) GetTitle(includeMonitor, includeGroup bool) string {
+	var sb strings.Builder
+
+	if includeMonitor {
+		sb.WriteString("[")
+		sb.WriteString(v.Monitor)
+		sb.WriteString("] ")
+	}
+
+	sb.WriteString("Safe has unexpected transactions in queue")
+
+	return sb.String()
 }
 
-func (v *TransactionQueueExcess) GetDescription() string {
-	return fmt.Sprintf(`
-Timestamp: %s
-Monitor: %s
-Group: %s
-Safe Account: %s (https://app.safe.global/home?safe=%s)
-Number of Transactions: %d (https://app.safe.global/transactions/queue?safe=%s)`, v.Timestamp.UTC().Format("2006-01-02 15:04:05 UTC"), v.Monitor, v.Group, v.SafeAddress, v.SafeAddress, v.NumTxs, v.SafeAddress)
+func (v *TransactionQueueExcess) GetDescriptionText(includeMonitor, includeGroup bool) string {
+	var sb strings.Builder
+
+	sb.WriteString("\nTimestamp: ")
+	sb.WriteString(v.Timestamp.UTC().Format("2006-01-02 15:04:05 UTC"))
+
+	if includeMonitor {
+		sb.WriteString("\nMonitor: ")
+		sb.WriteString(v.Monitor)
+	}
+
+	if includeGroup {
+		sb.WriteString("\nGroup: ")
+		sb.WriteString(v.Group)
+	}
+
+	sb.WriteString("\nSafe Account: ")
+	sb.WriteString(v.SafeAddress)
+
+	sb.WriteString("\nNumber of Transactions: ")
+	sb.WriteString(fmt.Sprintf("%d", v.NumTxs))
+
+	return sb.String()
+}
+
+func (v *TransactionQueueExcess) GetDescriptionMarkdown(includeMonitor, includeGroup bool) string {
+	var sb strings.Builder
+
+	sb.WriteString("**Timestamp:** ")
+	sb.WriteString(v.Timestamp.UTC().Format("2006-01-02 15:04:05 UTC"))
+	sb.WriteString("\n")
+
+	if includeMonitor {
+		sb.WriteString("**Monitor:** ")
+		sb.WriteString(v.Monitor)
+		sb.WriteString("\n")
+	}
+
+	if includeGroup {
+		sb.WriteString("**Group:** ")
+		sb.WriteString(v.Group)
+		sb.WriteString("\n")
+	}
+
+	sb.WriteString("**Safe Account:** `")
+	sb.WriteString(v.SafeAddress)
+	sb.WriteString("`\n")
+
+	sb.WriteString("**Number of Transactions:** ")
+	sb.WriteString(fmt.Sprintf("%d", v.NumTxs))
+
+	return sb.String()
+}
+
+func (v *TransactionQueueExcess) GetDescriptionHTML(includeMonitor, includeGroup bool) string {
+	var sb strings.Builder
+
+	sb.WriteString("<p><strong>Timestamp:</strong> ")
+	sb.WriteString(v.Timestamp.UTC().Format("2006-01-02 15:04:05 UTC"))
+	sb.WriteString("</p>")
+
+	if includeMonitor {
+		sb.WriteString("<p><strong>Monitor:</strong> ")
+		sb.WriteString(v.Monitor)
+		sb.WriteString("</p>")
+	}
+
+	if includeGroup {
+		sb.WriteString("<p><strong>Group:</strong> ")
+		sb.WriteString(v.Group)
+		sb.WriteString("</p>")
+	}
+
+	sb.WriteString("<p><strong>Safe Account:</strong> ")
+	sb.WriteString(v.SafeAddress)
+	sb.WriteString("</p>")
+
+	sb.WriteString("<p><strong>Number of Transactions:</strong> ")
+	sb.WriteString(fmt.Sprintf("%d", v.NumTxs))
+	sb.WriteString("</p>")
+
+	return sb.String()
 }

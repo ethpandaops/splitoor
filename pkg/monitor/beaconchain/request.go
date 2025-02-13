@@ -70,9 +70,18 @@ func (c *client) getValidators(ctx context.Context, pubkeys []string) (*Response
 		return nil, err
 	}
 
+	// response can be a single or list of validators
+	// still returns OK if validators are not found
 	resp := new(Response[[]Validator])
 	if err := json.Unmarshal(data, resp); err != nil {
-		return nil, err
+		// Try single validator response
+		singleResp := new(Response[Validator])
+		if err2 := json.Unmarshal(data, singleResp); err2 != nil {
+			return nil, err
+		}
+
+		resp.Status = singleResp.Status
+		resp.Data = []Validator{singleResp.Data}
 	}
 
 	return resp, nil

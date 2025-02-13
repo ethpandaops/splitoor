@@ -27,7 +27,7 @@ func (e *ExcessQueue) Update(length int) (shouldAlert bool) {
 	e.mu.Lock()
 	defer e.mu.Unlock()
 
-	shouldBeAlerting := e.check(length)
+	shouldBeAlerting := length > e.maxLen
 
 	if e.alerting {
 		shouldAlert = false
@@ -47,10 +47,6 @@ func (e *ExcessQueue) Update(length int) (shouldAlert bool) {
 	e.length = length
 
 	return
-}
-
-func (e *ExcessQueue) check(length int) bool {
-	return length > e.maxLen
 }
 
 func (e *ExcessQueue) Alerting() bool {

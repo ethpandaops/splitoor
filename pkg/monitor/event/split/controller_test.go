@@ -31,7 +31,7 @@ func TestController(t *testing.T) {
 			splitAddress:       "0x123",
 			expectedController: "0x456",
 			actualController:   "0x789",
-			wantTitle:          "[test_monitor] test_group split controller has changed",
+			wantTitle:          "[test_monitor] Split controller has changed",
 			wantDesc: `
 Timestamp: 2024-01-01 12:00:00 UTC
 Monitor: test_monitor
@@ -48,7 +48,7 @@ Actual Controller address: 0x789`,
 			splitAddress:       "0x123",
 			expectedController: "0x456",
 			actualController:   "0x456",
-			wantTitle:          "[test_monitor] test_group split controller has changed",
+			wantTitle:          "[test_monitor] Split controller has changed",
 			wantDesc: `
 Timestamp: 2024-01-01 12:00:00 UTC
 Monitor: test_monitor
@@ -65,7 +65,7 @@ Actual Controller address: 0x456`,
 			splitAddress:       "0x123&*()",
 			expectedController: "0x456{}[]",
 			actualController:   "0x789<>?",
-			wantTitle:          "[test!@#] test$%^ split controller has changed",
+			wantTitle:          "[test!@#] Split controller has changed",
 			wantDesc: `
 Timestamp: 2024-01-01 12:00:00 UTC
 Monitor: test!@#
@@ -82,7 +82,7 @@ Actual Controller address: 0x789<>?`,
 			splitAddress:       "",
 			expectedController: "",
 			actualController:   "",
-			wantTitle:          "[test_monitor] test_group split controller has changed",
+			wantTitle:          "[test_monitor] Split controller has changed",
 			wantDesc: `
 Timestamp: 2024-01-01 12:00:00 UTC
 Monitor: test_monitor
@@ -99,7 +99,7 @@ Actual Controller address: `,
 			splitAddress:       "0x" + strings.Repeat("1", 64),
 			expectedController: "0x" + strings.Repeat("2", 64),
 			actualController:   "0x" + strings.Repeat("3", 64),
-			wantTitle:          "[" + strings.Repeat("m", 100) + "] " + strings.Repeat("g", 100) + " split controller has changed",
+			wantTitle:          "[" + strings.Repeat("m", 100) + "] Split controller has changed",
 			wantDesc: `
 Timestamp: 2024-01-01 12:00:00 UTC
 Monitor: ` + strings.Repeat("m", 100) + `
@@ -116,7 +116,7 @@ Actual Controller address: 0x` + strings.Repeat("3", 64),
 			splitAddress:       "0x测试地址",
 			expectedController: "0x预期控制器",
 			actualController:   "0x实际控制器",
-			wantTitle:          "[测试监控器] 测试组 split controller has changed",
+			wantTitle:          "[测试监控器] Split controller has changed",
 			wantDesc: `
 Timestamp: 2024-01-01 12:00:00 UTC
 Monitor: 测试监控器
@@ -133,7 +133,7 @@ Actual Controller address: 0x实际控制器`,
 			splitAddress:       "0x123",
 			expectedController: "0x456",
 			actualController:   "0x789",
-			wantTitle:          "[test_monitor] test_group split controller has changed",
+			wantTitle:          "[test_monitor] Split controller has changed",
 			wantDesc: `
 Timestamp: 9999-12-31 23:59:59 UTC
 Monitor: test_monitor
@@ -164,8 +164,8 @@ Actual Controller address: 0x789`,
 			// Test getters
 			assert.Equal(t, tt.monitor, evt.GetMonitor())
 			assert.Equal(t, tt.group, evt.GetGroup())
-			assert.Equal(t, tt.wantTitle, evt.GetTitle())
-			assert.Equal(t, tt.wantDesc, evt.GetDescription())
+			assert.Equal(t, tt.wantTitle, evt.GetTitle(true, true))
+			assert.Equal(t, tt.wantDesc, evt.GetDescriptionText(true, true))
 
 			// Test fields
 			assert.Equal(t, tt.timestamp, evt.Timestamp)

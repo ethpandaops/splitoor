@@ -38,11 +38,19 @@ func (m *MockEvent) GetType() string {
 	return m.eventType
 }
 
-func (m *MockEvent) GetTitle() string {
+func (m *MockEvent) GetTitle(includeMonitorName, includeGroupName bool) string {
 	return m.title
 }
 
-func (m *MockEvent) GetDescription() string {
+func (m *MockEvent) GetDescriptionText(includeMonitorName, includeGroupName bool) string {
+	return m.description
+}
+
+func (m *MockEvent) GetDescriptionMarkdown(includeMonitorName, includeGroupName bool) string {
+	return m.description
+}
+
+func (m *MockEvent) GetDescriptionHTML(includeMonitorName, includeGroupName bool) string {
 	return m.description
 }
 
@@ -135,8 +143,10 @@ func TestEventInterface(t *testing.T) {
 			// Test all getters
 			assert.Equal(t, tt.monitor, mockEvent.GetMonitor())
 			assert.Equal(t, tt.eventType, mockEvent.GetType())
-			assert.Equal(t, tt.title, mockEvent.GetTitle())
-			assert.Equal(t, tt.description, mockEvent.GetDescription())
+			assert.Equal(t, tt.title, mockEvent.GetTitle(true, true))
+			assert.Equal(t, tt.description, mockEvent.GetDescriptionText(true, true))
+			assert.Equal(t, tt.description, mockEvent.GetDescriptionMarkdown(true, true))
+			assert.Equal(t, tt.description, mockEvent.GetDescriptionHTML(true, true))
 			assert.Equal(t, tt.group, mockEvent.GetGroup())
 
 			// Test string representations
@@ -203,8 +213,10 @@ func TestEventComparison(t *testing.T) {
 			assert.Equal(t, tt.shouldEq,
 				tt.event1.GetMonitor() == tt.event2.GetMonitor() &&
 					tt.event1.GetType() == tt.event2.GetType() &&
-					tt.event1.GetTitle() == tt.event2.GetTitle() &&
-					tt.event1.GetDescription() == tt.event2.GetDescription() &&
+					tt.event1.GetTitle(true, true) == tt.event2.GetTitle(true, true) &&
+					tt.event1.GetDescriptionText(true, true) == tt.event2.GetDescriptionText(true, true) &&
+					tt.event1.GetDescriptionMarkdown(true, true) == tt.event2.GetDescriptionMarkdown(true, true) &&
+					tt.event1.GetDescriptionHTML(true, true) == tt.event2.GetDescriptionHTML(true, true) &&
 					tt.event1.GetGroup() == tt.event2.GetGroup())
 		})
 	}
@@ -290,8 +302,10 @@ func TestEventValidation(t *testing.T) {
 			// Check if required fields are present
 			hasAllFields := tt.event.GetMonitor() != "" &&
 				tt.event.GetType() != "" &&
-				tt.event.GetTitle() != "" &&
-				tt.event.GetDescription() != "" &&
+				tt.event.GetTitle(true, true) != "" &&
+				tt.event.GetDescriptionText(true, true) != "" &&
+				tt.event.GetDescriptionMarkdown(true, true) != "" &&
+				tt.event.GetDescriptionHTML(true, true) != "" &&
 				tt.event.GetGroup() != ""
 
 			assert.Equal(t, tt.shouldBeOK, hasAllFields)

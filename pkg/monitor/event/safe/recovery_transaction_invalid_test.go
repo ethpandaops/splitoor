@@ -30,12 +30,12 @@ func TestRecoveryTransactionInvalid(t *testing.T) {
 			safeAddress: "0x123",
 			txID:        "tx_123",
 			reason:      "invalid signature",
-			wantTitle:   "[test_monitor] test_group safe account has invalid recovery transaction",
+			wantTitle:   "[test_monitor] Safe account has invalid recovery transaction",
 			wantDesc: `
 Timestamp: 2024-01-01 12:00:00 UTC
 Monitor: test_monitor
 Group: test_group
-Safe Account: 0x123 (https://app.safe.global/home?safe=0x123)
+Safe Account: 0x123
 Transaction ID: tx_123
 Reason: invalid signature`,
 		},
@@ -47,12 +47,12 @@ Reason: invalid signature`,
 			safeAddress: "0x123",
 			txID:        "tx_123",
 			reason:      "",
-			wantTitle:   "[test_monitor] test_group safe account has invalid recovery transaction",
+			wantTitle:   "[test_monitor] Safe account has invalid recovery transaction",
 			wantDesc: `
 Timestamp: 2024-01-01 12:00:00 UTC
 Monitor: test_monitor
 Group: test_group
-Safe Account: 0x123 (https://app.safe.global/home?safe=0x123)
+Safe Account: 0x123
 Transaction ID: tx_123
 Reason: `,
 		},
@@ -64,12 +64,12 @@ Reason: `,
 			safeAddress: "0x123&*()",
 			txID:        "tx_123!@#",
 			reason:      "invalid!@#",
-			wantTitle:   "[test!@#] test$%^ safe account has invalid recovery transaction",
+			wantTitle:   "[test!@#] Safe account has invalid recovery transaction",
 			wantDesc: `
 Timestamp: 2024-01-01 12:00:00 UTC
 Monitor: test!@#
 Group: test$%^
-Safe Account: 0x123&*() (https://app.safe.global/home?safe=0x123&*())
+Safe Account: 0x123&*()
 Transaction ID: tx_123!@#
 Reason: invalid!@#`,
 		},
@@ -95,8 +95,8 @@ Reason: invalid!@#`,
 			// Test getters
 			assert.Equal(t, tt.monitor, evt.GetMonitor())
 			assert.Equal(t, tt.group, evt.GetGroup())
-			assert.Equal(t, tt.wantTitle, evt.GetTitle())
-			assert.Equal(t, tt.wantDesc, evt.GetDescription())
+			assert.Equal(t, tt.wantTitle, evt.GetTitle(true, true))
+			assert.Equal(t, tt.wantDesc, evt.GetDescriptionText(true, true))
 
 			// Test fields
 			assert.Equal(t, tt.timestamp, evt.Timestamp)

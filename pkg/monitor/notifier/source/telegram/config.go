@@ -5,8 +5,9 @@ import (
 )
 
 type Config struct {
-	BotToken string `yaml:"botToken" default:""`
-	ChatID   string `yaml:"chatId" default:""`
+	BotToken string `yaml:"botToken"`
+	ChatID   string `yaml:"chatId"`
+	ThreadID int64  `yaml:"threadId,omitempty"`
 }
 
 func (c *Config) Validate() error {

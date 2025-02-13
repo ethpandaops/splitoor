@@ -3,6 +3,7 @@ package ses
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/awserr"
@@ -21,9 +22,13 @@ type SES struct {
 	config  *Config
 	client  *ses.SES
 	metrics *Metrics
+
+	includeMonitorName bool
+	includeGroupName   bool
+	docs               *string
 }
 
-func NewSES(ctx context.Context, log logrus.FieldLogger, monitor, name string, config *Config) (*SES, error) {
+func NewSES(ctx context.Context, log logrus.FieldLogger, monitor, name string, docs *string, includeMonitorName, includeGroupName bool, config *Config) (*SES, error) {
 	if config == nil {
 		return nil, fmt.Errorf("config is required")
 	}
@@ -34,12 +39,15 @@ func NewSES(ctx context.Context, log logrus.FieldLogger, monitor, name string, c
 	}
 
 	return &SES{
-		log:     log.WithField("source", "ses"),
-		monitor: monitor,
-		name:    name,
-		config:  config,
-		client:  ses.New(sess),
-		metrics: GetMetricsInstance("splitoor_notifier_ses", monitor),
+		log:                log.WithField("source", "ses"),
+		monitor:            monitor,
+		name:               name,
+		config:             config,
+		client:             ses.New(sess),
+		metrics:            GetMetricsInstance("splitoor_notifier_ses", monitor),
+		includeMonitorName: includeMonitorName,
+		includeGroupName:   includeGroupName,
+		docs:               docs,
 	}, nil
 }
 
@@ -73,6 +81,13 @@ func (s *SES) Publish(ctx context.Context, e event.Event) error {
 		}
 	}()
 
+	description := e.GetDescriptionText(s.includeMonitorName, s.includeGroupName)
+
+	if s.docs != nil {
+		docURL := strings.ReplaceAll(*s.docs, ":group", e.GetGroup())
+		description = fmt.Sprintf("%s\n\nGo to docs: %s", description, docURL)
+	}
+
 	input := &ses.SendEmailInput{
 		Destination: &ses.Destination{
 			ToAddresses: aws.StringSlice(s.config.To),
@@ -81,12 +96,12 @@ func (s *SES) Publish(ctx context.Context, e event.Event) error {
 			Body: &ses.Body{
 				Text: &ses.Content{
 					Charset: aws.String("UTF-8"),
-					Data:    aws.String(e.GetDescription()),
+					Data:    aws.String(description),
 				},
 			},
 			Subject: &ses.Content{
 				Charset: aws.String("UTF-8"),
-				Data:    aws.String(e.GetTitle()),
+				Data:    aws.String(fmt.Sprintf("🚨 %s", e.GetTitle(s.includeMonitorName, s.includeGroupName))),
 			},
 		},
 		Source: aws.String(s.config.From),

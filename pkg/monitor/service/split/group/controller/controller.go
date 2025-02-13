@@ -22,7 +22,7 @@ type Controller interface {
 	Address() string
 }
 
-func NewController(ctx context.Context, log logrus.FieldLogger, monitor, name string, controllerType ControllerType, config *RawMessage, splitAddress, splitsContractAddress string, ethereumPool *ethereum.Pool, safeClient s.Client, publisher *notifier.Publisher) (Controller, error) {
+func NewController(ctx context.Context, log logrus.FieldLogger, monitor, name string, controllerType ControllerType, config *RawMessage, splitAddress, recoveryAddress, splitsContractAddress string, ethereumPool *ethereum.Pool, safeClient s.Client, publisher *notifier.Publisher) (Controller, error) {
 	if controllerType == ControllerTypeUnknown {
 		return nil, errors.New("controller type is required")
 	}
@@ -55,7 +55,7 @@ func NewController(ctx context.Context, log logrus.FieldLogger, monitor, name st
 			return nil, err
 		}
 
-		return safe.New(ctx, log, monitor, name, conf, splitAddress, splitsContractAddress, ethereumPool, safeClient, publisher)
+		return safe.New(ctx, log, monitor, name, conf, splitAddress, recoveryAddress, splitsContractAddress, ethereumPool, safeClient, publisher)
 	}
 
 	return nil, errors.New("controller type is not supported")

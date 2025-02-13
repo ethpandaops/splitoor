@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"encoding/hex"
 	"strings"
-	"sync"
 
 	"github.com/ethereum/go-ethereum/crypto"
 )
@@ -13,14 +12,9 @@ type HashParams struct {
 	Accounts              []string
 	PercentageAllocations []uint32
 	DistributorFee        uint32
-
-	mu sync.Mutex
 }
 
 func (p *HashParams) order() error {
-	p.mu.Lock()
-	defer p.mu.Unlock()
-
 	accounts, allocations, err := ParseRecipients(p.Accounts, p.PercentageAllocations)
 	if err != nil {
 		return err
@@ -35,7 +29,7 @@ func (p *HashParams) order() error {
 // Calculate the hash of the split
 // requires abi.encodePacked non standard packed mode
 // https://docs.soliditylang.org/en/latest/abi-spec.html#non-standard-packed-mode
-func (c *Client) CalculateHash(params *HashParams) ([]byte, error) {
+func CalculateHash(params *HashParams) ([]byte, error) {
 	if err := params.order(); err != nil {
 		return nil, err
 	}

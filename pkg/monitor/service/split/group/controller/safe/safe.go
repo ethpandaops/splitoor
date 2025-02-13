@@ -43,15 +43,16 @@ type Safe struct {
 	next          *alert.Next
 	missing       *alert.Missing
 	invalid       *alert.Invalid
+	signersAlert  *alert.Signers
 
 	metrics *Metrics
 
 	publisher *notifier.Publisher
 }
 
-func New(ctx context.Context, log logrus.FieldLogger, monitor, name string, config *Config, splitAddress, splitsContractAddress string, ethereumPool *ethereum.Pool, safeClient safe.Client, publisher *notifier.Publisher) (*Safe, error) {
+func New(ctx context.Context, log logrus.FieldLogger, monitor, name string, config *Config, splitAddress, recoveryAddress, splitsContractAddress string, ethereumPool *ethereum.Pool, safeClient safe.Client, publisher *notifier.Publisher) (*Safe, error) {
 	// expected recipients when split is in recovery state
-	recoveryAccounts, recoveryAllocations, err := split.ParseRecipients([]string{splitAddress, config.RecoveryAddress}, []uint32{1, 999999})
+	recoveryAccounts, recoveryAllocations, err := split.ParseRecipients([]string{splitAddress, recoveryAddress}, []uint32{1, 999999})
 	if err != nil {
 		return nil, err
 	}
@@ -73,6 +74,7 @@ func New(ctx context.Context, log logrus.FieldLogger, monitor, name string, conf
 		next:                  alert.NewNext(log),
 		missing:               alert.NewMissing(log),
 		invalid:               alert.NewInvalid(log),
+		signersAlert:          alert.NewSigners(log),
 		metrics:               GetMetricsInstance("splitoor_split_controller", monitor),
 		publisher:             publisher,
 	}, nil
@@ -118,6 +120,22 @@ func (c *Safe) Address() string {
 }
 
 func (c *Safe) tick(ctx context.Context) {
+	match, err := c.safeClient.CheckSigners(ctx, c.address)
+	if err != nil {
+		c.log.WithError(err).Error("failed to check signers")
+
+		return
+	}
+
+	shouldAlert := c.signersAlert.Update(!match)
+	if shouldAlert {
+		c.log.Warn("Alerting signer mismatch")
+
+		if pErr := c.publisher.Publish(event.NewSignerMismatch(time.Now(), c.monitor, c.name, c.address)); pErr != nil {
+			c.log.WithError(pErr).Error("Error publishing signer mismatch alert")
+		}
+	}
+
 	queued, err := c.safeClient.GetQueuedTransactions(ctx, c.address)
 	if err != nil {
 		c.log.WithError(err).Error("failed to get queued transactions")
@@ -202,7 +220,7 @@ func (c *Safe) tick(ctx context.Context) {
 	/*
 	 * Always alert if the queue is too large
 	 */
-	shouldAlert := c.excessQueue.Update(len(txns))
+	shouldAlert = c.excessQueue.Update(len(txns))
 	if shouldAlert {
 		c.log.WithFields(logrus.Fields{
 			"length": len(txns),
@@ -242,8 +260,8 @@ func (c *Safe) tick(ctx context.Context) {
 	/*
 	 * Alert if a valid recovery transaction is not next in the queue
 	 */
-	shouldAlert = c.next.Update(hasNextRecoveryTx)
-	if shouldAlert && recoveryTx != "" && invalidRecoveryError == nil {
+	shouldAlert = c.next.Update(recoveryTx != "", invalidRecoveryError == nil, hasNextRecoveryTx)
+	if shouldAlert {
 		c.log.WithFields(logrus.Fields{
 			"tx_id": recoveryTx,
 		}).Warn("Alerting recovery transaction not next")
@@ -262,8 +280,8 @@ func (c *Safe) tick(ctx context.Context) {
 	/*
 	 * Alert if a valid next recovery transaction is not pre-signed
 	 */
-	shouldAlert = c.confirmations.Update(currentConfirmations, expectedConfirmations)
-	if shouldAlert && hasNextRecoveryTx {
+	shouldAlert = c.confirmations.Update(currentConfirmations, expectedConfirmations, hasNextRecoveryTx)
+	if shouldAlert {
 		c.log.WithFields(logrus.Fields{
 			"current_confirmations":  currentConfirmations,
 			"expected_confirmations": expectedConfirmations,

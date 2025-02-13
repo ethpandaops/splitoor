@@ -27,8 +27,9 @@ func TestConfigValidate(t *testing.T) {
 			config: &Config{
 				Groups: []group.Config{
 					{
-						Name:    "test_group",
-						Address: "0x123",
+						Name:            "test_group",
+						Address:         "0x123",
+						RecoveryAddress: "0x789",
 						Accounts: []*account.Config{
 							{
 								Name:       "account1",

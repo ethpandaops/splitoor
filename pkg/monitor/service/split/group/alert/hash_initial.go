@@ -6,27 +6,27 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
-type Hash struct {
-	log          logrus.FieldLogger
-	expectedHash string
+type HashInitial struct {
+	log         logrus.FieldLogger
+	initialHash string
 
 	alerting bool
 	hash     string
 	mu       sync.Mutex
 }
 
-func NewHash(log logrus.FieldLogger, expectedHash string) *Hash {
-	return &Hash{
-		log:          log,
-		expectedHash: expectedHash,
+func NewHashInitial(log logrus.FieldLogger, initialHash string) *HashInitial {
+	return &HashInitial{
+		log:         log,
+		initialHash: initialHash,
 	}
 }
 
-func (b *Hash) Update(hash string) (shouldAlert bool) {
+func (b *HashInitial) Update(hash string) (shouldAlert bool) {
 	b.mu.Lock()
 	defer b.mu.Unlock()
 
-	shouldBeAlerting := hash != b.expectedHash
+	shouldBeAlerting := hash == b.initialHash
 
 	if b.alerting {
 		shouldAlert = false

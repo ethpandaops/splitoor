@@ -5,43 +5,43 @@ import (
 	"time"
 )
 
-type Controller struct {
-	Timestamp          time.Time
-	SplitAddress       string
-	ExpectedController string
-	ActualController   string
-	Group              string
-	Monitor            string
+type HashUnknownState struct {
+	Timestamp    time.Time
+	SplitAddress string
+	ExpectedHash string
+	ActualHash   string
+	Group        string
+	Monitor      string
 }
 
 const (
-	ControllerType = "split_controller"
+	HashUnknownStateType = "split_hash_unknown_state"
 )
 
-func NewController(timestamp time.Time, monitor, group, splitAddress, expectedController, actualController string) *Controller {
-	return &Controller{
-		Timestamp:          timestamp,
-		SplitAddress:       splitAddress,
-		ExpectedController: expectedController,
-		ActualController:   actualController,
-		Group:              group,
-		Monitor:            monitor,
+func NewHashUnknownState(timestamp time.Time, monitor, group, splitAddress, expectedHash, actualHash string) *HashUnknownState {
+	return &HashUnknownState{
+		Timestamp:    timestamp,
+		SplitAddress: splitAddress,
+		ExpectedHash: expectedHash,
+		ActualHash:   actualHash,
+		Group:        group,
+		Monitor:      monitor,
 	}
 }
 
-func (v *Controller) GetType() string {
-	return ControllerType
+func (v *HashUnknownState) GetType() string {
+	return HashUnknownStateType
 }
 
-func (v *Controller) GetGroup() string {
+func (v *HashUnknownState) GetGroup() string {
 	return v.Group
 }
 
-func (v *Controller) GetMonitor() string {
+func (v *HashUnknownState) GetMonitor() string {
 	return v.Monitor
 }
 
-func (v *Controller) GetTitle(includeMonitor, includeGroup bool) string {
+func (v *HashUnknownState) GetTitle(includeMonitor, includeGroup bool) string {
 	var sb strings.Builder
 
 	if includeMonitor {
@@ -50,12 +50,12 @@ func (v *Controller) GetTitle(includeMonitor, includeGroup bool) string {
 		sb.WriteString("] ")
 	}
 
-	sb.WriteString("Split controller has changed")
+	sb.WriteString("Split hash is in unknown state")
 
 	return sb.String()
 }
 
-func (v *Controller) GetDescriptionText(includeMonitor, includeGroup bool) string {
+func (v *HashUnknownState) GetDescriptionText(includeMonitor, includeGroup bool) string {
 	var sb strings.Builder
 
 	sb.WriteString("\nTimestamp: ")
@@ -73,15 +73,15 @@ func (v *Controller) GetDescriptionText(includeMonitor, includeGroup bool) strin
 
 	sb.WriteString("\nSplit Address: ")
 	sb.WriteString(v.SplitAddress)
-	sb.WriteString("\nExpected Controller address: ")
-	sb.WriteString(v.ExpectedController)
-	sb.WriteString("\nActual Controller address: ")
-	sb.WriteString(v.ActualController)
+	sb.WriteString("\nExpected Hash: ")
+	sb.WriteString(v.ExpectedHash)
+	sb.WriteString("\nActual Hash: ")
+	sb.WriteString(v.ActualHash)
 
 	return sb.String()
 }
 
-func (v *Controller) GetDescriptionMarkdown(includeMonitor, includeGroup bool) string {
+func (v *HashUnknownState) GetDescriptionMarkdown(includeMonitor, includeGroup bool) string {
 	var sb strings.Builder
 
 	sb.WriteString("**Timestamp:** ")
@@ -104,18 +104,18 @@ func (v *Controller) GetDescriptionMarkdown(includeMonitor, includeGroup bool) s
 	sb.WriteString(v.SplitAddress)
 	sb.WriteString("`\n")
 
-	sb.WriteString("**Expected Controller address:** `")
-	sb.WriteString(v.ExpectedController)
+	sb.WriteString("**Expected Hash:** `")
+	sb.WriteString(v.ExpectedHash)
 	sb.WriteString("`\n")
 
-	sb.WriteString("**Actual Controller address:** `")
-	sb.WriteString(v.ActualController)
+	sb.WriteString("**Actual Hash:** `")
+	sb.WriteString(v.ActualHash)
 	sb.WriteString("`")
 
 	return sb.String()
 }
 
-func (v *Controller) GetDescriptionHTML(includeMonitor, includeGroup bool) string {
+func (v *HashUnknownState) GetDescriptionHTML(includeMonitor, includeGroup bool) string {
 	var sb strings.Builder
 
 	sb.WriteString("<p><strong>Timestamp:</strong> ")
@@ -138,12 +138,12 @@ func (v *Controller) GetDescriptionHTML(includeMonitor, includeGroup bool) strin
 	sb.WriteString(v.SplitAddress)
 	sb.WriteString("</p>")
 
-	sb.WriteString("<p><strong>Expected Controller address:</strong> ")
-	sb.WriteString(v.ExpectedController)
+	sb.WriteString("<p><strong>Expected Hash:</strong> ")
+	sb.WriteString(v.ExpectedHash)
 	sb.WriteString("</p>")
 
-	sb.WriteString("<p><strong>Actual Controller address:</strong> ")
-	sb.WriteString(v.ActualController)
+	sb.WriteString("<p><strong>Actual Hash:</strong> ")
+	sb.WriteString(v.ActualHash)
 	sb.WriteString("</p>")
 
 	return sb.String()

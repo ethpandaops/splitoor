@@ -29,6 +29,9 @@ beaconchain:
 safe:
   enabled: true
   endpoint: "https://safe-client.safe.global"
+  signers:
+    - "0x0000000000000000000000000000000000000000"
+    - "0x0000000000000000000000000000000000000001"
 
 services:
   split:
@@ -36,6 +39,7 @@ services:
       - name: "group-1"
         address: "0x0000000000000000000000000000000000000000" # split address
         contract: "0x0000000000000000000000000000000000000000" # 0xSplits v1 contract address, not needed for mainnet, holesky and sepolia
+        recoveryAddress: "0x0000000000000000000000000000000000000000" # address of the split update for recovery state
         accounts:
           - name: "account-1"
             address: "0x0000000000000000000000000000000000000000"
@@ -50,7 +54,6 @@ services:
           type: "safe"
           config:
             address: "0x0000000000000000000000000000000000000000" # safe address
-            recoveryAddress: "0x0000000000000000000000000000000000000000" # address of the split update for recovery state
   validator:
     groups:
       - name: "group-1"
@@ -60,18 +63,31 @@ services:
           - "0x000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000"
 
 notifier:
+  # docs: https://your-docs.com/:group # optional, link to docs for a group. the :group template will be replaced with the group name
   sources:
     - type: "discord"
       name: "discord"
+      # group: "group-1" # optional, only send events for this group
+      # includeMonitorName: false # optional, include the monitor name in the event title
       config:
         webhook: "https://discord.com/api/webhooks/your-webhook-url"
     - type: "telegram"
       name: "telegram"
+      # group: "group-1" # optional, only send events for this group
+      # includeMonitorName: false # optional, include the monitor name in the event title
       config:
         botToken: "your-bot-token"
+        # take the group id in a link https://t.me/c/1234
+        # 1234 and add -100 to the front
+        # chatId is "-1001234"
         chatId: "your-chat-id"
+        # use for super groups eg. https://t.me/c/1234/5
+        # 5 on the end is the thread id
+        # threadId: 1
     - type: "smtp"
       name: "smtp"
+      # group: "group-1" # optional, only send events for this group
+      # includeMonitorName: false # optional, include the monitor name in the event title
       config:
         host: "localhost"
         port: 25
@@ -84,6 +100,8 @@ notifier:
           - "your-to-email"
     - type: "ses"
       name: "ses"
+      # group: "group-1" # optional, only send events for this group
+      # includeMonitorName: false # optional, include the monitor name in the event title
       config:
         # AWS credentials and region will be automatically pulled from the environment variables
         # eg. AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, AWS_SESSION_TOKEN, AWS_REGION

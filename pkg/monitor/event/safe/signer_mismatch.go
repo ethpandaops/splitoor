@@ -5,39 +5,39 @@ import (
 	"time"
 )
 
-type RecoveryTransactionMissing struct {
-	Timestamp   time.Time
-	SafeAddress string
-	Group       string
-	Monitor     string
+type SignerMismatch struct {
+	Timestamp   time.Time `json:"timestamp"`
+	Monitor     string    `json:"monitor"`
+	Group       string    `json:"name"`
+	SafeAddress string    `json:"address"`
 }
 
 const (
-	RecoveryTransactionMissingType = "safe_recovery_transaction_missing"
+	SignerMismatchType = "signer_mismatch"
 )
 
-func NewRecoveryTransactionMissing(timestamp time.Time, monitor, group, safeAddress string) *RecoveryTransactionMissing {
-	return &RecoveryTransactionMissing{
+func NewSignerMismatch(timestamp time.Time, monitor, group, safeAddress string) *SignerMismatch {
+	return &SignerMismatch{
 		Timestamp:   timestamp,
-		SafeAddress: safeAddress,
-		Group:       group,
 		Monitor:     monitor,
+		Group:       group,
+		SafeAddress: safeAddress,
 	}
 }
 
-func (v *RecoveryTransactionMissing) GetType() string {
-	return RecoveryTransactionMissingType
+func (v *SignerMismatch) GetType() string {
+	return SignerMismatchType
 }
 
-func (v *RecoveryTransactionMissing) GetGroup() string {
-	return v.Group
+func (v *SignerMismatch) GetGroup() string {
+	return "safe"
 }
 
-func (v *RecoveryTransactionMissing) GetMonitor() string {
+func (v *SignerMismatch) GetMonitor() string {
 	return v.Monitor
 }
 
-func (v *RecoveryTransactionMissing) GetTitle(includeMonitor, includeGroup bool) string {
+func (v *SignerMismatch) GetTitle(includeMonitor, includeGroup bool) string {
 	var sb strings.Builder
 
 	if includeMonitor {
@@ -46,12 +46,12 @@ func (v *RecoveryTransactionMissing) GetTitle(includeMonitor, includeGroup bool)
 		sb.WriteString("] ")
 	}
 
-	sb.WriteString("Safe account has no recovery transaction queued")
+	sb.WriteString("Safe account has unexpected owners")
 
 	return sb.String()
 }
 
-func (v *RecoveryTransactionMissing) GetDescriptionText(includeMonitor, includeGroup bool) string {
+func (v *SignerMismatch) GetDescriptionText(includeMonitor, includeGroup bool) string {
 	var sb strings.Builder
 
 	sb.WriteString("\nTimestamp: ")
@@ -73,7 +73,7 @@ func (v *RecoveryTransactionMissing) GetDescriptionText(includeMonitor, includeG
 	return sb.String()
 }
 
-func (v *RecoveryTransactionMissing) GetDescriptionMarkdown(includeMonitor, includeGroup bool) string {
+func (v *SignerMismatch) GetDescriptionMarkdown(includeMonitor, includeGroup bool) string {
 	var sb strings.Builder
 
 	sb.WriteString("**Timestamp:** ")
@@ -99,7 +99,7 @@ func (v *RecoveryTransactionMissing) GetDescriptionMarkdown(includeMonitor, incl
 	return sb.String()
 }
 
-func (v *RecoveryTransactionMissing) GetDescriptionHTML(includeMonitor, includeGroup bool) string {
+func (v *SignerMismatch) GetDescriptionHTML(includeMonitor, includeGroup bool) string {
 	var sb strings.Builder
 
 	sb.WriteString("<p><strong>Timestamp:</strong> ")

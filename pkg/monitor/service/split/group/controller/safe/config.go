@@ -3,9 +3,8 @@ package safe
 import "fmt"
 
 type Config struct {
-	Address         string `yaml:"address"`
-	MinSignatures   int    `yaml:"minSignatures"`
-	RecoveryAddress string `yaml:"recoveryAddress"`
+	Address       string `yaml:"address"`
+	MinSignatures int    `yaml:"minSignatures"`
 }
 
 func (c *Config) Validate() error {

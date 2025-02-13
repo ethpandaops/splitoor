@@ -17,8 +17,9 @@ func TestConfigValidate(t *testing.T) {
 		{
 			name: "valid config - full config",
 			config: &Config{
-				Name:    "test_group",
-				Address: "0x123",
+				Name:            "test_group",
+				Address:         "0x123",
+				RecoveryAddress: "0x789",
 				Accounts: []*account.Config{
 					{
 						Name:       "account1",
@@ -40,8 +41,9 @@ func TestConfigValidate(t *testing.T) {
 		{
 			name: "invalid config - one account",
 			config: &Config{
-				Name:    "test_group",
-				Address: "0x123",
+				Name:            "test_group",
+				Address:         "0x123",
+				RecoveryAddress: "0x789",
 				Accounts: []*account.Config{
 					{
 						Name:       "account1",
@@ -55,17 +57,19 @@ func TestConfigValidate(t *testing.T) {
 		{
 			name: "invalid config - no accounts",
 			config: &Config{
-				Name:     "test_group",
-				Address:  "0x123",
-				Accounts: []*account.Config{},
+				Name:            "test_group",
+				Address:         "0x123",
+				RecoveryAddress: "0x789",
+				Accounts:        []*account.Config{},
 			},
 			expectError: true,
 		},
 		{
 			name: "invalid config - bad account allocations",
 			config: &Config{
-				Name:    "test_group",
-				Address: "0x123",
+				Name:            "test_group",
+				Address:         "0x123",
+				RecoveryAddress: "0x789",
 				Accounts: []*account.Config{
 					{
 						Name:       "account1",
@@ -84,8 +88,9 @@ func TestConfigValidate(t *testing.T) {
 		{
 			name: "invalid config - empty name",
 			config: &Config{
-				Name:    "",
-				Address: "0x123",
+				Name:            "",
+				Address:         "0x123",
+				RecoveryAddress: "0x789",
 				Accounts: []*account.Config{
 					{
 						Name:       "account1",
@@ -104,8 +109,30 @@ func TestConfigValidate(t *testing.T) {
 		{
 			name: "invalid config - empty address",
 			config: &Config{
-				Name:    "test_group",
-				Address: "",
+				Name:            "test_group",
+				Address:         "",
+				RecoveryAddress: "0x789",
+				Accounts: []*account.Config{
+					{
+						Name:       "account1",
+						Address:    "0x456",
+						Allocation: 999999,
+					},
+					{
+						Name:       "account1",
+						Address:    "0x456",
+						Allocation: 1,
+					},
+				},
+			},
+			expectError: true,
+		},
+		{
+			name: "invalid config - empty recovery address",
+			config: &Config{
+				Name:            "test_group",
+				Address:         "0x123",
+				RecoveryAddress: "",
 				Accounts: []*account.Config{
 					{
 						Name:       "account1",
@@ -124,8 +151,9 @@ func TestConfigValidate(t *testing.T) {
 		{
 			name: "invalid config - invalid total allocation",
 			config: &Config{
-				Name:    "test_group",
-				Address: "0x123",
+				Name:            "test_group",
+				Address:         "0x123",
+				RecoveryAddress: "0x789",
 				Accounts: []*account.Config{
 					{
 						Name:       "account1",
@@ -144,8 +172,9 @@ func TestConfigValidate(t *testing.T) {
 		{
 			name: "invalid config - invalid account",
 			config: &Config{
-				Name:    "test_group",
-				Address: "0x123",
+				Name:            "test_group",
+				Address:         "0x123",
+				RecoveryAddress: "0x789",
 				Accounts: []*account.Config{
 					{
 						Name:       "",
@@ -159,8 +188,9 @@ func TestConfigValidate(t *testing.T) {
 		{
 			name: "invalid config - invalid controller",
 			config: &Config{
-				Name:    "test_group",
-				Address: "0x123",
+				Name:            "test_group",
+				Address:         "0x123",
+				RecoveryAddress: "0x789",
 				Accounts: []*account.Config{
 					{
 						Name:       "account1",

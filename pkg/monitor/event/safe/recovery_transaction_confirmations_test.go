@@ -32,13 +32,13 @@ func TestRecoveryTransactionConfirmations(t *testing.T) {
 			txID:                  "tx_123",
 			numConfirmations:      1,
 			expectedConfirmations: 3,
-			wantTitle:             "[test_monitor] test_group safe account has a recovery transaction with incorrect number of confirmations",
+			wantTitle:             "[test_monitor] Safe account has a recovery transaction with incorrect number of confirmations",
 			wantDesc: `
 Timestamp: 2024-01-01 12:00:00 UTC
 Monitor: test_monitor
 Group: test_group
-Safe Account: 0x123 (https://app.safe.global/home?safe=0x123)
-Recovery Transaction: tx_123 (https://app.safe.global/transactions/queue?safe=0x123)
+Safe Account: 0x123
+Recovery Transaction: tx_123
 Current Confirmations: 1
 Expected Confirmations: 3`,
 		},
@@ -51,13 +51,13 @@ Expected Confirmations: 3`,
 			txID:                  "tx_123",
 			numConfirmations:      2,
 			expectedConfirmations: 2,
-			wantTitle:             "[test_monitor] test_group safe account has a recovery transaction with incorrect number of confirmations",
+			wantTitle:             "[test_monitor] Safe account has a recovery transaction with incorrect number of confirmations",
 			wantDesc: `
 Timestamp: 2024-01-01 12:00:00 UTC
 Monitor: test_monitor
 Group: test_group
-Safe Account: 0x123 (https://app.safe.global/home?safe=0x123)
-Recovery Transaction: tx_123 (https://app.safe.global/transactions/queue?safe=0x123)
+Safe Account: 0x123
+Recovery Transaction: tx_123
 Current Confirmations: 2
 Expected Confirmations: 2`,
 		},
@@ -70,13 +70,13 @@ Expected Confirmations: 2`,
 			txID:                  "tx_123",
 			numConfirmations:      0,
 			expectedConfirmations: 2,
-			wantTitle:             "[test_monitor] test_group safe account has a recovery transaction with incorrect number of confirmations",
+			wantTitle:             "[test_monitor] Safe account has a recovery transaction with incorrect number of confirmations",
 			wantDesc: `
 Timestamp: 2024-01-01 12:00:00 UTC
 Monitor: test_monitor
 Group: test_group
-Safe Account: 0x123 (https://app.safe.global/home?safe=0x123)
-Recovery Transaction: tx_123 (https://app.safe.global/transactions/queue?safe=0x123)
+Safe Account: 0x123
+Recovery Transaction: tx_123
 Current Confirmations: 0
 Expected Confirmations: 2`,
 		},
@@ -103,8 +103,8 @@ Expected Confirmations: 2`,
 			// Test getters
 			assert.Equal(t, tt.monitor, evt.GetMonitor())
 			assert.Equal(t, tt.group, evt.GetGroup())
-			assert.Equal(t, tt.wantTitle, evt.GetTitle())
-			assert.Equal(t, tt.wantDesc, evt.GetDescription())
+			assert.Equal(t, tt.wantTitle, evt.GetTitle(true, true))
+			assert.Equal(t, tt.wantDesc, evt.GetDescriptionText(true, true))
 
 			// Test fields
 			assert.Equal(t, tt.timestamp, evt.Timestamp)
