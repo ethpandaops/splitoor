@@ -34,11 +34,6 @@ type client struct {
 	mu      sync.Mutex
 }
 
-type SafeCheck struct {
-	Signers   []AddressInfo
-	Threshold int
-}
-
 // NewClient creates a new Safe API client
 func NewClient(ctx context.Context, log logrus.FieldLogger, monitor string, conf *Config) (*client, error) {
 	return &client{

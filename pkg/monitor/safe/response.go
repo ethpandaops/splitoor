@@ -159,9 +159,5 @@ func (s *SafeResponse) CheckSigners(signers []string) bool {
 		}
 	}
 
-	if len(signers) != len(s.Owners) {
-		return false
-	}
-
-	return true
+	return len(signers) == len(s.Owners)
 }
