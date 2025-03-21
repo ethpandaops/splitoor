@@ -47,3 +47,10 @@ func (b *HashRecovery) Update(hash string) (shouldAlert bool) {
 
 	return
 }
+
+func (b *HashRecovery) GetHash() string {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+
+	return b.hash
+}

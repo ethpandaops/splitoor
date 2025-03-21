@@ -261,6 +261,14 @@ func (g *Group) checkController(ctx context.Context) {
 			continue
 		}
 
+		// Get previous controller value from alert
+		previousController := g.controllerAlert.GetController()
+
+		// Clear previous metric if controller has changed
+		if previousController != "" && previousController != *actualController {
+			g.metrics.ClearController([]string{g.name, node.Name(), g.address, g.controller.Address(), previousController, g.controller.Type()})
+		}
+
 		val := float64(0)
 		if *actualController == g.controller.Address() {
 			val = 1
@@ -301,6 +309,30 @@ func (g *Group) checkHash(ctx context.Context) {
 		}
 
 		actualHashString := hex.EncodeToString(actualHash[:])
+
+		// Get previous hash values from alerts and clear previous metrics if hash has changed
+		previousHashUnknown := g.hashUnknownAlert.GetHash()
+		previousHashInitial := g.hashInitialAlert.GetHash()
+		previousHashRecovery := g.hashRecoveryAlert.GetHash()
+
+		if previousHashUnknown != "" && previousHashUnknown != actualHashString {
+			g.metrics.ClearHashStable([]string{g.name, node.Name(), g.address, g.stableHash, previousHashUnknown})
+			g.metrics.ClearHashInitial([]string{g.name, node.Name(), g.address, g.initialHash, previousHashUnknown})
+			g.metrics.ClearHashRecovery([]string{g.name, node.Name(), g.address, g.recoveryHash, previousHashUnknown})
+		}
+
+		if previousHashInitial != previousHashUnknown && previousHashInitial != "" && previousHashInitial != actualHashString {
+			g.metrics.ClearHashStable([]string{g.name, node.Name(), g.address, g.stableHash, previousHashInitial})
+			g.metrics.ClearHashInitial([]string{g.name, node.Name(), g.address, g.initialHash, previousHashInitial})
+			g.metrics.ClearHashRecovery([]string{g.name, node.Name(), g.address, g.recoveryHash, previousHashInitial})
+		}
+
+		if previousHashRecovery != previousHashUnknown && previousHashRecovery != previousHashInitial &&
+			previousHashRecovery != "" && previousHashRecovery != actualHashString {
+			g.metrics.ClearHashStable([]string{g.name, node.Name(), g.address, g.stableHash, previousHashRecovery})
+			g.metrics.ClearHashInitial([]string{g.name, node.Name(), g.address, g.initialHash, previousHashRecovery})
+			g.metrics.ClearHashRecovery([]string{g.name, node.Name(), g.address, g.recoveryHash, previousHashRecovery})
+		}
 
 		stableHashVal := float64(0)
 		if actualHashString == g.stableHash {

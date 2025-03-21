@@ -47,3 +47,10 @@ func (b *Controller) Update(controller string) (shouldAlert bool) {
 
 	return
 }
+
+func (b *Controller) GetController() string {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+
+	return b.controller
+}

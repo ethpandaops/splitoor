@@ -48,3 +48,10 @@ func (b *HashUnknown) Update(hash string) (shouldAlert bool) {
 
 	return
 }
+
+func (b *HashUnknown) GetHash() string {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+
+	return b.hash
+}
