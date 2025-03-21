@@ -141,15 +141,17 @@ func TestClient_GetTransaction(t *testing.T) {
 	tests := []struct {
 		name           string
 		chainID        string
+		safeAddress    string
 		safeTxHash     string
 		serverResponse *safe.TransactionDetails
 		serverStatus   int
 		wantErr        bool
 	}{
 		{
-			name:       "success",
-			chainID:    "1",
-			safeTxHash: "0x123",
+			name:        "success",
+			chainID:     "1",
+			safeAddress: "0x123",
+			safeTxHash:  "0x123",
 			serverResponse: &safe.TransactionDetails{
 				SafeAddress: "0x123",
 				TxID:        "123",
@@ -174,13 +176,16 @@ func TestClient_GetTransaction(t *testing.T) {
 			wantErr:      false,
 		},
 		{
-			name:       "missing chain ID",
-			safeTxHash: "0x123",
-			wantErr:    true,
+			name:         "missing chain ID",
+			safeAddress:  "0x123",
+			safeTxHash:   "0x123",
+			serverStatus: http.StatusOK,
+			wantErr:      true,
 		},
 		{
 			name:         "server error",
 			chainID:      "1",
+			safeAddress:  "0x123",
 			safeTxHash:   "0x123",
 			serverStatus: http.StatusInternalServerError,
 			wantErr:      true,
@@ -208,7 +213,7 @@ func TestClient_GetTransaction(t *testing.T) {
 				c.SetChainID(tt.chainID)
 			}
 
-			tx, err := c.GetTransaction(context.Background(), tt.safeTxHash)
+			tx, err := c.GetTransaction(context.Background(), tt.safeAddress, tt.safeTxHash)
 			if tt.wantErr {
 				assert.Error(t, err)
 
@@ -510,125 +515,6 @@ func TestClient_GetSafe(t *testing.T) {
 			assert.Equal(t, tt.serverResponse.Nonce, resp.Nonce)
 			assert.Equal(t, tt.serverResponse.Threshold, resp.Threshold)
 			assert.Equal(t, len(tt.serverResponse.Owners), len(resp.Owners))
-		})
-	}
-}
-
-func TestClient_CheckSigners(t *testing.T) {
-	tests := []struct {
-		name           string
-		chainID        string
-		safeAddress    string
-		signers        []string
-		serverResponse *safe.SafeResponse
-		serverStatus   int
-		wantMatch      bool
-		wantErr        bool
-	}{
-		{
-			name:        "success - all signers match",
-			chainID:     "17000",
-			safeAddress: "0xc31Fb5899401E804C412B74a5bfFFb2B26222F3d",
-			signers: []string{
-				"0xdead09833B4e3ac912dF77d2eAEf4F117e787811",
-				"0xdeadDB4896EB07A28b75B0784CbBed8503A09e22",
-			},
-			serverResponse: &safe.SafeResponse{
-				Address: safe.AddressInfo{
-					Value: "0xc31Fb5899401E804C412B74a5bfFFb2B26222F3d",
-				},
-				ChainID:   "17000",
-				Nonce:     3,
-				Threshold: 4,
-				Owners: []safe.AddressInfo{
-					{Value: "0xdead09833B4e3ac912dF77d2eAEf4F117e787811"},
-					{Value: "0xdeadDB4896EB07A28b75B0784CbBed8503A09e22"},
-					{Value: "0xdeadc4752e998B1c04B8a89Dc1F3B07E5aaf1333"},
-				},
-			},
-			serverStatus: http.StatusOK,
-			wantMatch:    true,
-			wantErr:      false,
-		},
-		{
-			name:        "success - signer mismatch",
-			chainID:     "17000",
-			safeAddress: "0xc31Fb5899401E804C412B74a5bfFFb2B26222F3d",
-			signers: []string{
-				"0xdead09833B4e3ac912dF77d2eAEf4F117e787811",
-				"0x1234567890123456789012345678901234567890", // Not in owners
-			},
-			serverResponse: &safe.SafeResponse{
-				Address: safe.AddressInfo{
-					Value: "0xc31Fb5899401E804C412B74a5bfFFb2B26222F3d",
-				},
-				ChainID:   "17000",
-				Nonce:     3,
-				Threshold: 4,
-				Owners: []safe.AddressInfo{
-					{Value: "0xdead09833B4e3ac912dF77d2eAEf4F117e787811"},
-					{Value: "0xdeadDB4896EB07A28b75B0784CbBed8503A09e22"},
-				},
-			},
-			serverStatus: http.StatusOK,
-			wantMatch:    false,
-			wantErr:      false,
-		},
-		{
-			name:         "missing chain ID",
-			safeAddress:  "0x123",
-			signers:      []string{"0x123"},
-			serverStatus: http.StatusOK,
-			wantErr:      true,
-		},
-		{
-			name:         "server error",
-			chainID:      "1",
-			safeAddress:  "0x123",
-			signers:      []string{"0x123"},
-			serverStatus: http.StatusInternalServerError,
-			wantErr:      true,
-		},
-		{
-			name:        "no signers configured",
-			chainID:     "1",
-			safeAddress: "0x123",
-			signers:     nil,
-			wantErr:     true,
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-				w.WriteHeader(tt.serverStatus)
-
-				if tt.serverResponse != nil {
-					err := json.NewEncoder(w).Encode(tt.serverResponse)
-					require.NoError(t, err)
-				}
-			}))
-			defer server.Close()
-
-			c, err := safe.NewClient(context.Background(), logrus.New(), "test", &safe.Config{
-				Endpoint: server.URL,
-				Signers:  tt.signers,
-			})
-			require.NoError(t, err)
-
-			if tt.chainID != "" {
-				c.SetChainID(tt.chainID)
-			}
-
-			match, err := c.CheckSigners(context.Background(), tt.safeAddress)
-			if tt.wantErr {
-				assert.Error(t, err)
-
-				return
-			}
-
-			require.NoError(t, err)
-			assert.Equal(t, tt.wantMatch, match)
 		})
 	}
 }

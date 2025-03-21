@@ -24,13 +24,13 @@ const (
 )
 
 type Safe struct {
-	log           logrus.FieldLogger
-	name          string
-	monitor       string
-	ethereumPool  *ethereum.Pool
-	address       string
-	minSignatures int
-
+	log                   logrus.FieldLogger
+	name                  string
+	monitor               string
+	ethereumPool          *ethereum.Pool
+	address               string
+	threshold             int
+	signers               []string
 	splitAddress          string
 	splitsContractAddress string
 	recoveryAccounts      []string
@@ -38,14 +38,14 @@ type Safe struct {
 
 	safeClient safe.Client
 
-	excessQueue   *alert.ExcessQueue
-	confirmations *alert.Confirmations
-	next          *alert.Next
-	missing       *alert.Missing
-	invalid       *alert.Invalid
-	signersAlert  *alert.Signers
-
-	metrics *Metrics
+	excessQueue    *alert.ExcessQueue
+	confirmations  *alert.Confirmations
+	next           *alert.Next
+	missing        *alert.Missing
+	invalid        *alert.Invalid
+	signersAlert   *alert.Signers
+	thresholdAlert *alert.Threshold
+	metrics        *Metrics
 
 	publisher *notifier.Publisher
 }
@@ -63,7 +63,8 @@ func New(ctx context.Context, log logrus.FieldLogger, monitor, name string, conf
 		monitor:               monitor,
 		ethereumPool:          ethereumPool,
 		address:               config.Address,
-		minSignatures:         config.MinSignatures,
+		threshold:             config.Threshold,
+		signers:               config.Signers,
 		splitAddress:          splitAddress,
 		splitsContractAddress: splitsContractAddress,
 		recoveryAccounts:      recoveryAccounts,
@@ -75,6 +76,7 @@ func New(ctx context.Context, log logrus.FieldLogger, monitor, name string, conf
 		missing:               alert.NewMissing(log),
 		invalid:               alert.NewInvalid(log),
 		signersAlert:          alert.NewSigners(log),
+		thresholdAlert:        alert.NewThreshold(log, config.Threshold),
 		metrics:               GetMetricsInstance("splitoor_split_controller", monitor),
 		publisher:             publisher,
 	}, nil
@@ -120,14 +122,16 @@ func (c *Safe) Address() string {
 }
 
 func (c *Safe) tick(ctx context.Context) {
-	match, err := c.safeClient.CheckSigners(ctx, c.address)
+	safeRsp, err := c.safeClient.GetSafe(ctx, c.address)
 	if err != nil {
-		c.log.WithError(err).Error("failed to check signers")
+		c.log.WithError(err).Error("failed to get safe")
 
 		return
 	}
 
-	shouldAlert := c.signersAlert.Update(!match)
+	signersMatch := safeRsp.CheckSigners(c.signers)
+
+	shouldAlert := c.signersAlert.Update(!signersMatch)
 	if shouldAlert {
 		c.log.Warn("Alerting signer mismatch")
 
@@ -135,6 +139,19 @@ func (c *Safe) tick(ctx context.Context) {
 			c.log.WithError(pErr).Error("Error publishing signer mismatch alert")
 		}
 	}
+
+	c.metrics.UpdateSignersValid(boolToFloat64(signersMatch), []string{c.name, c.address, c.Type()})
+
+	shouldAlert = c.thresholdAlert.Update(safeRsp.Threshold)
+	if shouldAlert {
+		c.log.Warn("Alerting threshold mismatch")
+
+		if pErr := c.publisher.Publish(event.NewThreshold(time.Now(), c.monitor, c.name, c.address, safeRsp.Threshold, c.threshold)); pErr != nil {
+			c.log.WithError(pErr).Error("Error publishing threshold mismatch alert")
+		}
+	}
+
+	c.metrics.UpdateThresholdValid(boolToFloat64(safeRsp.Threshold == c.threshold), []string{c.name, c.address, c.Type()})
 
 	queued, err := c.safeClient.GetQueuedTransactions(ctx, c.address)
 	if err != nil {
@@ -168,7 +185,7 @@ func (c *Safe) tick(ctx context.Context) {
 	var requiredConfirmations int
 
 	for i, tx := range txns {
-		txDetails, err := c.safeClient.GetTransaction(ctx, tx.Transaction.ID)
+		txDetails, err := c.safeClient.GetTransaction(ctx, c.address, tx.Transaction.ID)
 		if err != nil {
 			c.log.WithError(err).Error("failed to get recovery transaction details")
 
@@ -351,7 +368,12 @@ func (c *Safe) checkRecoveryParameters(tx *safe.TransactionDetails) error {
 			allocations = make([]uint32, len(allocsIface))
 
 			for i, a := range allocsIface {
-				val, err := strconv.ParseUint(a.(string), 10, 32)
+				aStr, ok := a.(string)
+				if !ok {
+					return fmt.Errorf("invalid allocation value type: expected string, got %T", a)
+				}
+
+				val, err := strconv.ParseUint(aStr, 10, 32)
 				if err != nil {
 					return fmt.Errorf("invalid allocation value: %v", err)
 				}
@@ -359,7 +381,12 @@ func (c *Safe) checkRecoveryParameters(tx *safe.TransactionDetails) error {
 				allocations[i] = uint32(val)
 			}
 		case "distributorFee":
-			val, err := strconv.ParseUint(param.Value.(string), 10, 32)
+			feeStr, ok := param.Value.(string)
+			if !ok {
+				return fmt.Errorf("invalid distributor fee value type: expected string, got %T", param.Value)
+			}
+
+			val, err := strconv.ParseUint(feeStr, 10, 32)
 			if err != nil {
 				return fmt.Errorf("invalid distributor fee value: %v", err)
 			}

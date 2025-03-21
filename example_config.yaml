@@ -29,9 +29,6 @@ beaconchain:
 safe:
   enabled: true
   endpoint: "https://safe-client.safe.global"
-  signers:
-    - "0x0000000000000000000000000000000000000000"
-    - "0x0000000000000000000000000000000000000001"
 
 services:
   split:
@@ -54,6 +51,10 @@ services:
           type: "safe"
           config:
             address: "0x0000000000000000000000000000000000000000" # safe address
+            threshold: 1
+            signers:
+              - "0x0000000000000000000000000000000000000000"
+              - "0x0000000000000000000000000000000000000001"
   validator:
     groups:
       - name: "group-1"
