@@ -11,8 +11,8 @@ type Threshold struct {
 	Monitor           string    `json:"monitor"`
 	Group             string    `json:"name"`
 	SafeAddress       string    `json:"address"`
-	ActualThreshold   int       `json:"actual_threshold"`
-	ExpectedThreshold int       `json:"expected_threshold"`
+	ActualThreshold   int       `json:"actualThreshold"`
+	ExpectedThreshold int       `json:"expectedThreshold"`
 }
 
 const (
