@@ -1,13 +1,18 @@
 package alert
 
 import (
+	"sync"
+
 	"github.com/sirupsen/logrus"
 )
 
 type Signers struct {
 	log logrus.FieldLogger
 
+	alerting  bool
 	lastState bool
+
+	mu sync.Mutex
 }
 
 func NewSigners(log logrus.FieldLogger) *Signers {
@@ -17,15 +22,28 @@ func NewSigners(log logrus.FieldLogger) *Signers {
 }
 
 // Update returns true if an alert should be triggered
-func (a *Signers) Update(mismatch bool) bool {
-	defer func() {
-		a.lastState = mismatch
-	}()
+func (a *Signers) Update(mismatch bool) (shouldAlert bool) {
+	a.mu.Lock()
+	defer a.mu.Unlock()
 
-	// Only alert on state change to true
-	if !a.lastState && mismatch {
-		return true
+	shouldBeAlerting := mismatch
+
+	if a.alerting {
+		shouldAlert = false
+
+		if !shouldBeAlerting {
+			a.alerting = false
+		}
+	} else {
+		shouldAlert = false
+
+		if shouldBeAlerting {
+			a.alerting = true
+			shouldAlert = true
+		}
 	}
 
-	return false
+	a.lastState = mismatch
+
+	return
 }

@@ -46,7 +46,7 @@ func (v *SignerMismatch) GetTitle(includeMonitor, includeGroup bool) string {
 		sb.WriteString("] ")
 	}
 
-	sb.WriteString("Safe account has unexpected owners")
+	sb.WriteString("Safe account has unexpected signers")
 
 	return sb.String()
 }

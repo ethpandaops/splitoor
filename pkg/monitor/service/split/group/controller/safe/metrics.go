@@ -1,8 +1,5 @@
 package safe
 
-// transaction_queue_count
-// transaction_queued shite
-
 import (
 	"sync"
 
@@ -15,6 +12,9 @@ type Metrics struct {
 	transactionRecoveryExists    *prometheus.GaugeVec
 	transactionRecoveryPreSigned *prometheus.GaugeVec
 	transactionRecoveryValid     *prometheus.GaugeVec
+	signersValid                 *prometheus.GaugeVec
+	thresholdValid               *prometheus.GaugeVec
+	requestFailures              *prometheus.CounterVec
 }
 
 var (
@@ -72,6 +72,33 @@ func GetMetricsInstance(namespace, monitor string) *Metrics {
 				},
 				[]string{"group", "controller", "source"},
 			),
+			signersValid: prometheus.NewGaugeVec(
+				prometheus.GaugeOpts{
+					Namespace:   namespace,
+					Name:        "signers_valid",
+					Help:        "Whether the signers match the expected configuration (1=valid, 0=invalid).",
+					ConstLabels: constLabels,
+				},
+				[]string{"group", "controller", "source"},
+			),
+			thresholdValid: prometheus.NewGaugeVec(
+				prometheus.GaugeOpts{
+					Namespace:   namespace,
+					Name:        "threshold_valid",
+					Help:        "Whether the threshold matches the expected configuration (1=valid, 0=invalid).",
+					ConstLabels: constLabels,
+				},
+				[]string{"group", "controller", "source"},
+			),
+			requestFailures: prometheus.NewCounterVec(
+				prometheus.CounterOpts{
+					Namespace:   namespace,
+					Name:        "request_failures",
+					Help:        "Number of failed requests to the Safe API.",
+					ConstLabels: constLabels,
+				},
+				[]string{"group", "controller", "source", "type"},
+			),
 		}
 
 		prometheus.MustRegister(metricsInstance.transactionQueueSize)
@@ -79,6 +106,9 @@ func GetMetricsInstance(namespace, monitor string) *Metrics {
 		prometheus.MustRegister(metricsInstance.transactionRecoveryExists)
 		prometheus.MustRegister(metricsInstance.transactionRecoveryPreSigned)
 		prometheus.MustRegister(metricsInstance.transactionRecoveryValid)
+		prometheus.MustRegister(metricsInstance.signersValid)
+		prometheus.MustRegister(metricsInstance.thresholdValid)
+		prometheus.MustRegister(metricsInstance.requestFailures)
 	})
 
 	return metricsInstance
@@ -102,4 +132,16 @@ func (m Metrics) UpdateTransactionRecoveryPreSigned(transactionRecoveryPreSigned
 
 func (m Metrics) UpdateTransactionRecoveryValid(transactionRecoveryValid float64, labels []string) {
 	m.transactionRecoveryValid.WithLabelValues(labels...).Set(transactionRecoveryValid)
+}
+
+func (m Metrics) UpdateSignersValid(signersValid float64, labels []string) {
+	m.signersValid.WithLabelValues(labels...).Set(signersValid)
+}
+
+func (m Metrics) UpdateThresholdValid(thresholdValid float64, labels []string) {
+	m.thresholdValid.WithLabelValues(labels...).Set(thresholdValid)
+}
+
+func (m Metrics) IncrementRequestFailures(labels []string) {
+	m.requestFailures.WithLabelValues(labels...).Inc()
 }

@@ -1,5 +1,7 @@
 package safe
 
+import "strings"
+
 type QueuedTransactionsResponse struct {
 	Count    int                       `json:"count"`
 	Next     *string                   `json:"next"`
@@ -143,4 +145,23 @@ type SafeResponse struct {
 	FallbackHandler            *AddressInfo  `json:"fallbackHandler"`
 	Guard                      *AddressInfo  `json:"guard"`
 	Version                    string        `json:"version"`
+}
+
+func (s *SafeResponse) CheckSigners(signers []string) bool {
+	actualSigners := make(map[string]bool)
+	for _, owner := range s.Owners {
+		actualSigners[strings.ToLower(owner.Value)] = true
+	}
+
+	for _, signer := range signers {
+		if !actualSigners[strings.ToLower(signer)] {
+			return false
+		}
+	}
+
+	if len(signers) != len(s.Owners) {
+		return false
+	}
+
+	return true
 }

@@ -28,7 +28,7 @@ func TestSignerMismatch(t *testing.T) {
 			monitor:     "test_monitor",
 			group:       "test_group",
 			safeAddress: "0x123",
-			wantTitle:   "[test_monitor] Safe account has unexpected owners",
+			wantTitle:   "[test_monitor] Safe account has unexpected signers",
 			wantDesc: `
 Timestamp: 2024-01-01 12:00:00 UTC
 Monitor: test_monitor
@@ -46,7 +46,7 @@ Safe Account: 0x123`,
 			monitor:     "test!@#",
 			group:       "test$%^",
 			safeAddress: "0x123&*()",
-			wantTitle:   "[test!@#] Safe account has unexpected owners",
+			wantTitle:   "[test!@#] Safe account has unexpected signers",
 			wantDesc: `
 Timestamp: 2024-01-01 12:00:00 UTC
 Monitor: test!@#

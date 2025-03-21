@@ -48,7 +48,3 @@ func (e *ExcessQueue) Update(length int) (shouldAlert bool) {
 
 	return
 }
-
-func (e *ExcessQueue) Alerting() bool {
-	return e.alerting
-}

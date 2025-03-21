@@ -3,8 +3,9 @@ package safe
 import "fmt"
 
 type Config struct {
-	Address       string `yaml:"address"`
-	MinSignatures int    `yaml:"minSignatures"`
+	Address   string   `yaml:"address"`
+	Signers   []string `yaml:"signers"`
+	Threshold int      `yaml:"threshold"`
 }
 
 func (c *Config) Validate() error {
@@ -16,8 +17,12 @@ func (c *Config) Validate() error {
 		return fmt.Errorf("address is required")
 	}
 
-	if c.MinSignatures == 0 {
-		return fmt.Errorf("minSignatures is required")
+	if c.Threshold == 0 {
+		return fmt.Errorf("threshold is required")
+	}
+
+	if len(c.Signers) == 0 {
+		return fmt.Errorf("signers is required")
 	}
 
 	return nil

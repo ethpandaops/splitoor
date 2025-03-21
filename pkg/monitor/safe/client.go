@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"net/http"
 	"strconv"
-	"strings"
 	"sync"
 	"time"
 
@@ -21,8 +20,6 @@ type Client interface {
 	GetTransaction(ctx context.Context, safeTxHash string) (*TransactionDetails, error)
 	// GetSafe returns details for a specific safe
 	GetSafe(ctx context.Context, safeAddress string) (*SafeResponse, error)
-	// CheckSigners returns true if all signers are owners of the safe
-	CheckSigners(ctx context.Context, safeAddress string) (bool, error)
 	// SetChainID sets the chain ID for the client
 	SetChainID(chainID string)
 }
@@ -30,7 +27,6 @@ type Client interface {
 type client struct {
 	log     logrus.FieldLogger
 	baseURL string
-	signers []string
 	client  *http.Client
 	metrics *Metrics
 
@@ -38,12 +34,16 @@ type client struct {
 	mu      sync.Mutex
 }
 
+type SafeCheck struct {
+	Signers   []AddressInfo
+	Threshold int
+}
+
 // NewClient creates a new Safe API client
 func NewClient(ctx context.Context, log logrus.FieldLogger, monitor string, conf *Config) (*client, error) {
 	return &client{
 		log:     log.WithField("module", "safe"),
 		baseURL: conf.Endpoint,
-		signers: conf.Signers,
 		client:  &http.Client{},
 		metrics: GetMetricsInstance("splitoor_safe", monitor),
 	}, nil
@@ -192,29 +192,4 @@ func (c *client) GetSafe(ctx context.Context, safeAddress string) (*SafeResponse
 	}
 
 	return &result, nil
-}
-
-func (c *client) CheckSigners(ctx context.Context, safeAddress string) (bool, error) {
-	// check if any signers are set
-	if len(c.signers) == 0 {
-		return false, fmt.Errorf("no signers set in config")
-	}
-
-	safe, err := c.GetSafe(ctx, safeAddress)
-	if err != nil {
-		return false, fmt.Errorf("failed to get safe: %w", err)
-	}
-
-	actualSigners := make(map[string]bool)
-	for _, owner := range safe.Owners {
-		actualSigners[strings.ToLower(owner.Value)] = true
-	}
-
-	for _, signer := range c.signers {
-		if !actualSigners[strings.ToLower(signer)] {
-			return false, nil
-		}
-	}
-
-	return true, nil
 }
