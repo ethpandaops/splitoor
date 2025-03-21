@@ -106,9 +106,22 @@ func (t *Telegram) Publish(ctx context.Context, e event.Event) error {
 		docURL := strings.ReplaceAll(*t.docs, ":group", url.QueryEscape(e.GetGroup()))
 		description = fmt.Sprintf("%s\n\n[**Go to docs**](%s)", description, docURL)
 	}
+	// Escape special characters for Telegram's MarkdownV2 format
+	escapeMarkdown := func(s string) string {
+		replacer := strings.NewReplacer(
+			"-", "\\-",
+			".", "\\.",
+			"_", "\\_",
+		)
 
-	title := strings.ReplaceAll(e.GetTitle(t.includeMonitorName, t.includeGroupName), "-", "\\-")
-	description = strings.ReplaceAll(strings.ReplaceAll(description, "**", "***"), "-", "\\-")
+		return replacer.Replace(s)
+	}
+
+	title := escapeMarkdown(e.GetTitle(t.includeMonitorName, t.includeGroupName))
+	// Convert standard markdown bold to Telegram's bold italic format
+	description = strings.ReplaceAll(description, "**", "***")
+	description = escapeMarkdown(description)
+
 	text := fmt.Sprintf("🚨 ***%s***\n\n%s", title, description)
 
 	isDisabled := true
