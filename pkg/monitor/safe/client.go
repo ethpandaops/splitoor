@@ -17,7 +17,7 @@ type Client interface {
 	// GetQueuedTransactions returns queued transactions for a safe
 	GetQueuedTransactions(ctx context.Context, safeAddress string) (*QueuedTransactionsResponse, error)
 	// GetTransaction returns details for a specific transaction
-	GetTransaction(ctx context.Context, safeTxHash string) (*TransactionDetails, error)
+	GetTransaction(ctx context.Context, safeAddress, safeTxHash string) (*TransactionDetails, error)
 	// GetSafe returns details for a specific safe
 	GetSafe(ctx context.Context, safeAddress string) (*SafeResponse, error)
 	// SetChainID sets the chain ID for the client
@@ -97,7 +97,7 @@ func (c *client) GetQueuedTransactions(ctx context.Context, safeAddress string) 
 	return &result, nil
 }
 
-func (c *client) GetTransaction(ctx context.Context, safeTxHash string) (*TransactionDetails, error) {
+func (c *client) GetTransaction(ctx context.Context, safeAddress, safeTxHash string) (*TransactionDetails, error) {
 	c.mu.Lock()
 
 	cid := c.chainID
@@ -112,7 +112,7 @@ func (c *client) GetTransaction(ctx context.Context, safeTxHash string) (*Transa
 	path := "/v1/chains/:chain_id/transactions/:safe_tx_hash"
 	start := time.Now()
 
-	c.metrics.ObserveRequest("GET", c.baseURL, path, cid, safeTxHash)
+	c.metrics.ObserveRequest("GET", c.baseURL, path, cid, safeAddress)
 
 	url := fmt.Sprintf("%s/v1/chains/%s/transactions/%s", c.baseURL, cid, safeTxHash)
 
@@ -123,13 +123,13 @@ func (c *client) GetTransaction(ctx context.Context, safeTxHash string) (*Transa
 
 	resp, err := c.client.Do(req)
 	if err != nil {
-		c.metrics.ObserveResponse("GET", c.baseURL, path, "error", cid, safeTxHash, time.Since(start))
+		c.metrics.ObserveResponse("GET", c.baseURL, path, "error", cid, safeAddress, time.Since(start))
 
 		return nil, fmt.Errorf("failed to execute request: %w", err)
 	}
 	defer resp.Body.Close()
 
-	c.metrics.ObserveResponse("GET", c.baseURL, path, strconv.Itoa(resp.StatusCode), cid, safeTxHash, time.Since(start))
+	c.metrics.ObserveResponse("GET", c.baseURL, path, strconv.Itoa(resp.StatusCode), cid, safeAddress, time.Since(start))
 
 	if resp.StatusCode != http.StatusOK {
 		return nil, fmt.Errorf("unexpected status code: %d", resp.StatusCode)

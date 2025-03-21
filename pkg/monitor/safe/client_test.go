@@ -141,15 +141,17 @@ func TestClient_GetTransaction(t *testing.T) {
 	tests := []struct {
 		name           string
 		chainID        string
+		safeAddress    string
 		safeTxHash     string
 		serverResponse *safe.TransactionDetails
 		serverStatus   int
 		wantErr        bool
 	}{
 		{
-			name:       "success",
-			chainID:    "1",
-			safeTxHash: "0x123",
+			name:        "success",
+			chainID:     "1",
+			safeAddress: "0x123",
+			safeTxHash:  "0x123",
 			serverResponse: &safe.TransactionDetails{
 				SafeAddress: "0x123",
 				TxID:        "123",
@@ -174,13 +176,16 @@ func TestClient_GetTransaction(t *testing.T) {
 			wantErr:      false,
 		},
 		{
-			name:       "missing chain ID",
-			safeTxHash: "0x123",
-			wantErr:    true,
+			name:         "missing chain ID",
+			safeAddress:  "0x123",
+			safeTxHash:   "0x123",
+			serverStatus: http.StatusOK,
+			wantErr:      true,
 		},
 		{
 			name:         "server error",
 			chainID:      "1",
+			safeAddress:  "0x123",
 			safeTxHash:   "0x123",
 			serverStatus: http.StatusInternalServerError,
 			wantErr:      true,
@@ -208,7 +213,7 @@ func TestClient_GetTransaction(t *testing.T) {
 				c.SetChainID(tt.chainID)
 			}
 
-			tx, err := c.GetTransaction(context.Background(), tt.safeTxHash)
+			tx, err := c.GetTransaction(context.Background(), tt.safeAddress, tt.safeTxHash)
 			if tt.wantErr {
 				assert.Error(t, err)
 

@@ -126,8 +126,6 @@ func (c *Safe) tick(ctx context.Context) {
 	if err != nil {
 		c.log.WithError(err).Error("failed to get safe")
 
-		c.metrics.IncrementRequestFailures([]string{c.name, c.address, c.Type(), "getSafe"})
-
 		return
 	}
 
@@ -159,8 +157,6 @@ func (c *Safe) tick(ctx context.Context) {
 	if err != nil {
 		c.log.WithError(err).Error("failed to get queued transactions")
 
-		c.metrics.IncrementRequestFailures([]string{c.name, c.address, c.Type(), "getQueuedTransactions"})
-
 		return
 	}
 
@@ -189,11 +185,9 @@ func (c *Safe) tick(ctx context.Context) {
 	var requiredConfirmations int
 
 	for i, tx := range txns {
-		txDetails, err := c.safeClient.GetTransaction(ctx, tx.Transaction.ID)
+		txDetails, err := c.safeClient.GetTransaction(ctx, c.address, tx.Transaction.ID)
 		if err != nil {
 			c.log.WithError(err).Error("failed to get recovery transaction details")
-
-			c.metrics.IncrementRequestFailures([]string{c.name, c.address, c.Type(), "getTransaction"})
 
 			return
 		}

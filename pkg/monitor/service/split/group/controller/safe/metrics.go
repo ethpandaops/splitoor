@@ -14,7 +14,6 @@ type Metrics struct {
 	transactionRecoveryValid     *prometheus.GaugeVec
 	signersValid                 *prometheus.GaugeVec
 	thresholdValid               *prometheus.GaugeVec
-	requestFailures              *prometheus.CounterVec
 }
 
 var (
@@ -90,15 +89,6 @@ func GetMetricsInstance(namespace, monitor string) *Metrics {
 				},
 				[]string{"group", "controller", "source"},
 			),
-			requestFailures: prometheus.NewCounterVec(
-				prometheus.CounterOpts{
-					Namespace:   namespace,
-					Name:        "request_failures",
-					Help:        "Number of failed requests to the Safe API.",
-					ConstLabels: constLabels,
-				},
-				[]string{"group", "controller", "source", "type"},
-			),
 		}
 
 		prometheus.MustRegister(metricsInstance.transactionQueueSize)
@@ -108,7 +98,6 @@ func GetMetricsInstance(namespace, monitor string) *Metrics {
 		prometheus.MustRegister(metricsInstance.transactionRecoveryValid)
 		prometheus.MustRegister(metricsInstance.signersValid)
 		prometheus.MustRegister(metricsInstance.thresholdValid)
-		prometheus.MustRegister(metricsInstance.requestFailures)
 	})
 
 	return metricsInstance
@@ -140,8 +129,4 @@ func (m Metrics) UpdateSignersValid(signersValid float64, labels []string) {
 
 func (m Metrics) UpdateThresholdValid(thresholdValid float64, labels []string) {
 	m.thresholdValid.WithLabelValues(labels...).Set(thresholdValid)
-}
-
-func (m Metrics) IncrementRequestFailures(labels []string) {
-	m.requestFailures.WithLabelValues(labels...).Inc()
 }
