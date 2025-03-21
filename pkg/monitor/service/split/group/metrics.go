@@ -100,3 +100,19 @@ func (m Metrics) UpdateHashRecovery(hash float64, labels []string) {
 func (m Metrics) UpdateController(controller float64, labels []string) {
 	m.controller.WithLabelValues(labels...).Set(controller)
 }
+
+func (m Metrics) ClearHashStable(labels []string) {
+	m.hashStable.DeleteLabelValues(labels...)
+}
+
+func (m Metrics) ClearHashInitial(labels []string) {
+	m.hashInitial.DeleteLabelValues(labels...)
+}
+
+func (m Metrics) ClearHashRecovery(labels []string) {
+	m.hashRecovery.DeleteLabelValues(labels...)
+}
+
+func (m Metrics) ClearController(labels []string) {
+	m.controller.DeleteLabelValues(labels...)
+}
