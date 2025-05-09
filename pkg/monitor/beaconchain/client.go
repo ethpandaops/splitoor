@@ -72,7 +72,7 @@ func (c *client) GetValidators(ctx context.Context, pubkeys []string) (map[strin
 		validator := &response.Data[i]
 
 		// Only add to map if validator has a valid pubkey
-		if validator != nil && validator.Pubkey != "" {
+		if validator.Pubkey != "" {
 			validators[validator.Pubkey] = validator
 		}
 	}
