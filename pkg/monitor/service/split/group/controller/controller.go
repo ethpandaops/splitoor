@@ -41,7 +41,7 @@ func NewController(ctx context.Context, log logrus.FieldLogger, monitor, name st
 			return nil, err
 		}
 
-		return eoa.New(ctx, log, name, conf)
+		return eoa.New(ctx, log, monitor, name, conf, ethereumPool)
 	case ControllerTypeSafe:
 		conf := &safe.Config{}
 

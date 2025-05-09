@@ -51,19 +51,30 @@ func (c *client) GetValidators(ctx context.Context, pubkeys []string) (map[strin
 		return nil, err
 	}
 
-	if response.Status != "OK" {
+	if response.Status != StatusOK {
 		return nil, fmt.Errorf("error response from server: %s", response.Status)
 	}
 
 	validators := make(map[string]*Validator)
 
-	if response.Data == nil {
+	// len() for nil slices is defined as zero, so we can simplify this check
+	if len(response.Data) == 0 {
 		return validators, nil
 	}
 
-	for i := range response.Data {
+	for i := 0; i < len(response.Data); i++ {
+		// Safe access to array elements with bounds check
+		if i >= len(response.Data) {
+			// This should never happen due to the loop condition, but it's a defensive check
+			break
+		}
+
 		validator := &response.Data[i]
-		validators[validator.Pubkey] = validator
+
+		// Only add to map if validator has a valid pubkey
+		if validator != nil && validator.Pubkey != "" {
+			validators[validator.Pubkey] = validator
+		}
 	}
 
 	return validators, nil
@@ -75,11 +86,19 @@ func (c *client) GetValidator(ctx context.Context, pubkey string) (*Validator, e
 		return nil, err
 	}
 
-	if response.Status != "OK" {
+	// Check if response is nil
+	if response == nil {
+		return nil, fmt.Errorf("received nil response")
+	}
+
+	if response.Status != StatusOK {
 		return nil, fmt.Errorf("error response from server: %s", response.Status)
 	}
 
-	return &response.Data, nil
+	// Create a copy of the data to avoid returning a pointer to potentially unstable memory
+	validator := response.Data
+
+	return &validator, nil
 }
 
 func (c *client) GetBatchSize() int {

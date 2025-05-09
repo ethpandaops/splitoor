@@ -93,13 +93,18 @@ func NewGroup(ctx context.Context, log logrus.FieldLogger, monitor string, conf 
 }
 
 func (g *Group) Start(ctx context.Context) {
+	// Initial tick
 	g.tick(ctx)
+
+	// Use a ticker instead of time.After for better resource management
+	ticker := time.NewTicker(time.Second * 12)
+	defer ticker.Stop() // Ensure ticker is stopped when function exits
 
 	for {
 		select {
 		case <-ctx.Done():
 			return
-		case <-time.After(time.Second * 12):
+		case <-ticker.C:
 			g.tick(ctx)
 		}
 	}

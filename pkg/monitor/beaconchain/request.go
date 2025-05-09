@@ -80,8 +80,20 @@ func (c *client) getValidators(ctx context.Context, pubkeys []string) (*Response
 			return nil, err
 		}
 
+		// After calling new() and successfully unmarshaling, singleResp can't be nil
+		// Note: This check was identified by linter as always false
+
 		resp.Status = singleResp.Status
-		resp.Data = []Validator{singleResp.Data}
+
+		// Initialize empty data array to avoid nil references later
+		if resp.Data == nil {
+			resp.Data = make([]Validator, 0)
+		}
+
+		// Only add data if we have valid content
+		if singleResp.Status == StatusOK {
+			resp.Data = []Validator{singleResp.Data}
+		}
 	}
 
 	return resp, nil

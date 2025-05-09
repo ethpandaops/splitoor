@@ -53,10 +53,22 @@ func GetMetricsInstance(namespace, monitorName string) *Metrics {
 }
 
 func (m Metrics) ObserveRequest(method, path string) {
+	// Check for nil metrics pointer
+	if m.requests == nil {
+		// Log error or return silently - using return since we can't access a logger here
+		return
+	}
+
 	m.requests.WithLabelValues(method, path).Inc()
 }
 
 func (m Metrics) ObserveResponse(method, path, code string, duration time.Duration) {
+	// Check for nil metrics pointers
+	if m.responses == nil || m.requestDuration == nil {
+		// Log error or return silently - using return since we can't access a logger here
+		return
+	}
+
 	m.responses.WithLabelValues(method, path, code).Inc()
 	m.requestDuration.WithLabelValues(method, path, code).Observe(duration.Seconds())
 }

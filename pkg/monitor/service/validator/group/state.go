@@ -2,6 +2,7 @@ package group
 
 import (
 	"sync"
+	"unsafe"
 
 	"github.com/sirupsen/logrus"
 )
@@ -54,11 +55,19 @@ func (s *State) UpdateValidator(source, pubkey string, balance uint64, status Me
 }
 
 func (s *State) Merge(other *State) (changedPubkeys []string) {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-
-	other.mu.Lock()
-	defer other.mu.Unlock()
+	// To prevent potential deadlocks, we need to ensure that locks are always
+	// acquired in a consistent order. Compare the pointers and lock in address order.
+	if uintptr(unsafe.Pointer(s)) < uintptr(unsafe.Pointer(other)) {
+		s.mu.Lock()
+		defer s.mu.Unlock()
+		other.mu.Lock()
+		defer other.mu.Unlock()
+	} else {
+		other.mu.Lock()
+		defer other.mu.Unlock()
+		s.mu.Lock()
+		defer s.mu.Unlock()
+	}
 
 	for pubkey, validators := range other.Validators {
 		if _, exists := s.Validators[pubkey]; !exists {

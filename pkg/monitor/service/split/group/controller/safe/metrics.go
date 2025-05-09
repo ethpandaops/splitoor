@@ -7,6 +7,7 @@ import (
 )
 
 type Metrics struct {
+	balance                      *prometheus.GaugeVec
 	transactionQueueSize         *prometheus.GaugeVec
 	transactionRecoveryNext      *prometheus.GaugeVec
 	transactionRecoveryExists    *prometheus.GaugeVec
@@ -26,6 +27,15 @@ func GetMetricsInstance(namespace, monitor string) *Metrics {
 		constLabels := prometheus.Labels{"monitor": monitor}
 
 		metricsInstance = &Metrics{
+			balance: prometheus.NewGaugeVec(
+				prometheus.GaugeOpts{
+					Namespace:   namespace,
+					Name:        "balance",
+					Help:        "The balance of the safe.",
+					ConstLabels: constLabels,
+				},
+				[]string{"group", "controller", "source", "address"},
+			),
 			transactionQueueSize: prometheus.NewGaugeVec(
 				prometheus.GaugeOpts{
 					Namespace:   namespace,
@@ -91,6 +101,7 @@ func GetMetricsInstance(namespace, monitor string) *Metrics {
 			),
 		}
 
+		prometheus.MustRegister(metricsInstance.balance)
 		prometheus.MustRegister(metricsInstance.transactionQueueSize)
 		prometheus.MustRegister(metricsInstance.transactionRecoveryNext)
 		prometheus.MustRegister(metricsInstance.transactionRecoveryExists)
@@ -101,6 +112,10 @@ func GetMetricsInstance(namespace, monitor string) *Metrics {
 	})
 
 	return metricsInstance
+}
+
+func (m Metrics) UpdateBalance(balance float64, labels []string) {
+	m.balance.WithLabelValues(labels...).Set(balance)
 }
 
 func (m Metrics) UpdateTransactionQueueSize(transactionQueueSize float64, labels []string) {

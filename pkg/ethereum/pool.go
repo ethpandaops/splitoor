@@ -2,6 +2,7 @@ package ethereum
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"math/rand/v2"
 	"sync"
@@ -18,7 +19,7 @@ type Pool struct {
 	name           string
 	beaconNodes    []*beacon.Node
 	executionNodes []*execution.Node
-	metrics        Metrics
+	metrics        *Metrics
 
 	mu sync.RWMutex
 
@@ -34,7 +35,7 @@ func NewPool(ctx context.Context, log logrus.FieldLogger, name string, config *C
 		executionNodes:        make([]*execution.Node, 0),
 		healthyBeaconNodes:    make(map[*beacon.Node]bool),
 		healthyExecutionNodes: make(map[*execution.Node]bool),
-		metrics:               NewMetrics("splitoor_ethereum_pool", name),
+		metrics:               GetMetricsInstance("splitoor_ethereum_pool", name),
 	}
 
 	for i, beaconCfg := range config.Beacon {
@@ -72,7 +73,17 @@ func (p *Pool) GetHealthyExecutionNodes() []*execution.Node {
 
 	var healthyNodes []*execution.Node
 
+	// Check for nil map before iterating
+	if p.healthyExecutionNodes == nil {
+		return healthyNodes
+	}
+
 	for node, healthy := range p.healthyExecutionNodes {
+		// Skip nil nodes
+		if node == nil {
+			continue
+		}
+
 		if healthy {
 			healthyNodes = append(healthyNodes, node)
 		}
@@ -87,7 +98,17 @@ func (p *Pool) GetHealthyExecutionNode() *execution.Node {
 
 	var healthyNodes []*execution.Node
 
+	// Check for nil map before iterating
+	if p.healthyExecutionNodes == nil {
+		return nil
+	}
+
 	for node, healthy := range p.healthyExecutionNodes {
+		// Skip nil nodes
+		if node == nil {
+			continue
+		}
+
 		if healthy {
 			healthyNodes = append(healthyNodes, node)
 		}
@@ -97,8 +118,21 @@ func (p *Pool) GetHealthyExecutionNode() *execution.Node {
 		return nil
 	}
 
+	// Make sure we have a valid slice before accessing elements
+	nodeCount := len(healthyNodes)
+	if nodeCount == 0 {
+		return nil
+	}
+
 	//nolint:gosec // doesn't matter
-	return healthyNodes[rand.IntN(len(healthyNodes))]
+	randomIndex := rand.IntN(nodeCount)
+
+	// Double check the index is valid
+	if randomIndex < 0 || randomIndex >= nodeCount {
+		return nil
+	}
+
+	return healthyNodes[randomIndex]
 }
 
 func (p *Pool) GetHealthyBeaconNodes() []*beacon.Node {
@@ -107,7 +141,17 @@ func (p *Pool) GetHealthyBeaconNodes() []*beacon.Node {
 
 	var healthyNodes []*beacon.Node
 
+	// Check for nil map before iterating
+	if p.healthyBeaconNodes == nil {
+		return healthyNodes
+	}
+
 	for node, healthy := range p.healthyBeaconNodes {
+		// Skip nil nodes
+		if node == nil {
+			continue
+		}
+
 		if healthy {
 			healthyNodes = append(healthyNodes, node)
 		}
@@ -122,7 +166,17 @@ func (p *Pool) GetHealthyBeaconNode() *beacon.Node {
 
 	var healthyNodes []*beacon.Node
 
+	// Check for nil map before iterating
+	if p.healthyBeaconNodes == nil {
+		return nil
+	}
+
 	for node, healthy := range p.healthyBeaconNodes {
+		// Skip nil nodes
+		if node == nil {
+			continue
+		}
+
 		if healthy {
 			healthyNodes = append(healthyNodes, node)
 		}
@@ -131,8 +185,22 @@ func (p *Pool) GetHealthyBeaconNode() *beacon.Node {
 	if len(healthyNodes) == 0 {
 		return nil
 	}
+
+	// Make sure we have a valid slice before accessing elements
+	nodeCount := len(healthyNodes)
+	if nodeCount == 0 {
+		return nil
+	}
+
 	//nolint:gosec // doesn't matter
-	return healthyNodes[rand.IntN(len(healthyNodes))]
+	randomIndex := rand.IntN(nodeCount)
+
+	// Double check the index is valid
+	if randomIndex < 0 || randomIndex >= nodeCount {
+		return nil
+	}
+
+	return healthyNodes[randomIndex]
 }
 
 func (p *Pool) WaitForHealthyBeaconNode(ctx context.Context) (*beacon.Node, error) {
@@ -162,16 +230,38 @@ func (p *Pool) WaitForHealthyExecutionNode(ctx context.Context) (*execution.Node
 }
 
 func (p *Pool) Start(ctx context.Context) {
+	// Create a context with cancellation for proper resource management
 	g, gCtx := errgroup.WithContext(ctx)
 
+	// Use a separate waitgroup for tracking goroutines we spawn ourselves
+	var wg sync.WaitGroup
+
+	// Create a channel for error reporting from background goroutines
+	errCh := make(chan error, 3) // Buffer size matches number of background goroutines
+
+	// Initialize metrics first
 	p.UpdateNodeMetrics()
 
-	for _, node := range p.beaconNodes {
+	// Safely capture node references to avoid loop variable capture issues
+	for _, beaconNode := range p.beaconNodes {
+		// Create local copy of the loop variable to avoid data race
+		node := beaconNode
+
 		g.Go(func() error {
+			// Check for nil node to avoid panic
+			if node == nil {
+				return fmt.Errorf("nil beacon node in pool")
+			}
+
 			node.OnReady(gCtx, func(ctx context.Context) error {
 				p.mu.Lock()
+				defer p.mu.Unlock()
+
+				if p.healthyBeaconNodes == nil {
+					p.healthyBeaconNodes = make(map[*beacon.Node]bool)
+				}
+
 				p.healthyBeaconNodes[node] = true
-				p.mu.Unlock()
 
 				return nil
 			})
@@ -180,12 +270,25 @@ func (p *Pool) Start(ctx context.Context) {
 		})
 	}
 
-	for _, node := range p.executionNodes {
+	for _, execNode := range p.executionNodes {
+		// Create local copy of the loop variable to avoid data race
+		node := execNode
+
 		g.Go(func() error {
+			// Check for nil node to avoid panic
+			if node == nil {
+				return fmt.Errorf("nil execution node in pool")
+			}
+
 			node.OnReady(gCtx, func(ctx context.Context) error {
 				p.mu.Lock()
+				defer p.mu.Unlock()
+
+				if p.healthyExecutionNodes == nil {
+					p.healthyExecutionNodes = make(map[*execution.Node]bool)
+				}
+
 				p.healthyExecutionNodes[node] = true
-				p.mu.Unlock()
 
 				return nil
 			})
@@ -194,9 +297,14 @@ func (p *Pool) Start(ctx context.Context) {
 		})
 	}
 
-	// Start status reporting goroutine
+	// Start status reporting goroutine with proper context handling
+	wg.Add(1)
+
 	go func() {
+		defer wg.Done()
+
 		ticker := time.NewTicker(1 * time.Minute)
+
 		defer ticker.Stop()
 
 		for {
@@ -204,23 +312,42 @@ func (p *Pool) Start(ctx context.Context) {
 			case <-gCtx.Done():
 				return
 			case <-ticker.C:
-				p.mu.RLock()
-				healthyBeacon := len(p.healthyBeaconNodes)
-				healthyExec := len(p.healthyExecutionNodes)
-				totalBeacon := len(p.beaconNodes)
-				totalExec := len(p.executionNodes)
-				p.mu.RUnlock()
+				func() {
+					p.mu.RLock()
+					defer p.mu.RUnlock()
 
-				p.log.WithFields(logrus.Fields{
-					"healthy_beacon_nodes":    fmt.Sprintf("%d/%d", healthyBeacon, totalBeacon),
-					"healthy_execution_nodes": fmt.Sprintf("%d/%d", healthyExec, totalExec),
-				}).Info("Pool status")
+					// Safely get counts, handling nil maps
+					healthyBeacon := 0
+					healthyExec := 0
+
+					if p.healthyBeaconNodes != nil {
+						healthyBeacon = len(p.healthyBeaconNodes)
+					}
+
+					if p.healthyExecutionNodes != nil {
+						healthyExec = len(p.healthyExecutionNodes)
+					}
+
+					totalBeacon := len(p.beaconNodes)
+					totalExec := len(p.executionNodes)
+
+					p.log.WithFields(logrus.Fields{
+						"healthy_beacon_nodes":    fmt.Sprintf("%d/%d", healthyBeacon, totalBeacon),
+						"healthy_execution_nodes": fmt.Sprintf("%d/%d", healthyExec, totalExec),
+					}).Info("Pool status")
+				}()
 			}
 		}
 	}()
 
+	// Start metrics update goroutine
+	wg.Add(1)
+
 	go func() {
+		defer wg.Done()
+
 		ticker := time.NewTicker(15 * time.Second)
+
 		defer ticker.Stop()
 
 		for {
@@ -233,23 +360,53 @@ func (p *Pool) Start(ctx context.Context) {
 		}
 	}()
 
+	// Handle errors from errgroup
+	wg.Add(1)
+
 	go func() {
+		defer wg.Done()
+		defer close(errCh) // Close error channel when done
+
 		if err := g.Wait(); err != nil {
-			if ctx.Err() != nil {
+			if errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) {
+				// Context cancellation is expected, not an error
 				return
 			}
 
-			p.log.WithError(err).Error("error in pool")
+			// Report the error
+			p.log.WithError(err).Error("error in node pool")
+
+			// Send error to channel if context still valid
+			select {
+			case <-ctx.Done():
+				return
+			case errCh <- err:
+			}
 		}
 	}()
 }
 
 func (p *Pool) UpdateNodeMetrics() {
 	p.mu.Lock()
-	healthyBeacon := len(p.healthyBeaconNodes)
-	healthyExec := len(p.healthyExecutionNodes)
-	unhealthyBeacon := len(p.beaconNodes) - healthyBeacon
-	unhealthyExec := len(p.executionNodes) - healthyExec
+
+	// Safely get counts, handling nil maps
+	healthyBeacon := 0
+	healthyExec := 0
+
+	if p.healthyBeaconNodes != nil {
+		healthyBeacon = len(p.healthyBeaconNodes)
+	}
+
+	if p.healthyExecutionNodes != nil {
+		healthyExec = len(p.healthyExecutionNodes)
+	}
+
+	totalBeacon := len(p.beaconNodes)
+	totalExec := len(p.executionNodes)
+
+	unhealthyBeacon := totalBeacon - healthyBeacon
+	unhealthyExec := totalExec - healthyExec
+
 	p.mu.Unlock()
 
 	p.metrics.SetNodesTotal(float64(healthyBeacon), []string{"beacon", "healthy"})

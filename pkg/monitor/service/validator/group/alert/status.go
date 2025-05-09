@@ -57,6 +57,12 @@ func (s *Status) Update(statuses []string) (shouldAlert bool, alertingStatus *st
 }
 
 func (s *Status) check(statuses []string) (shouldAlert bool, alertingStatus *string) {
+	// len() for nil slices is defined as zero, so we can simplify this check
+	if len(statuses) == 0 {
+		return false, nil
+	}
+
+	// Iterate over statuses
 	for _, st := range statuses {
 		if _, exists := s.allowedSet[st]; !exists {
 			return true, &st
