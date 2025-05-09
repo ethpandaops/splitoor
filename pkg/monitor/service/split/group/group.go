@@ -3,6 +3,7 @@ package group
 import (
 	"context"
 	"encoding/hex"
+	"math/big"
 	"time"
 
 	"github.com/0xsequence/ethkit/ethcoder"
@@ -419,6 +420,9 @@ func (g *Group) gatherMetrics(ctx context.Context) {
 			continue
 		}
 
-		g.metrics.UpdateBalance(float64(balance.Uint64()), []string{g.name, node.Name(), g.address})
+		balanceFloat := new(big.Float).SetInt(balance)
+		balanceFloat64, _ := balanceFloat.Float64()
+
+		g.metrics.UpdateBalance(balanceFloat64, []string{g.name, node.Name(), g.address})
 	}
 }

@@ -2,6 +2,7 @@ package eoa
 
 import (
 	"context"
+	"math/big"
 	"time"
 
 	"github.com/ethpandaops/splitoor/pkg/ethereum"
@@ -81,6 +82,9 @@ func (c *EOA) gatherMetrics(ctx context.Context) {
 			continue
 		}
 
-		c.metrics.UpdateBalance(float64(balance.Uint64()), []string{c.name, c.Type(), node.Name(), c.address})
+		balanceFloat := new(big.Float).SetInt(balance)
+		balanceFloat64, _ := balanceFloat.Float64()
+
+		c.metrics.UpdateBalance(balanceFloat64, []string{c.name, c.Type(), node.Name(), c.address})
 	}
 }

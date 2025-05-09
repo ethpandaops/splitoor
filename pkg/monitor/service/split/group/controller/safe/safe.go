@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"math/big"
 	"strconv"
 	"strings"
 	"time"
@@ -673,6 +674,9 @@ func (c *Safe) gatherMetrics(ctx context.Context) {
 			continue
 		}
 
-		c.metrics.UpdateBalance(float64(balance.Uint64()), []string{c.name, c.Type(), node.Name(), c.address})
+		balanceFloat := new(big.Float).SetInt(balance)
+		balanceFloat64, _ := balanceFloat.Float64()
+
+		c.metrics.UpdateBalance(balanceFloat64, []string{c.name, c.Type(), node.Name(), c.address})
 	}
 }
