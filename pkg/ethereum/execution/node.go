@@ -20,16 +20,8 @@ type headerTransport struct {
 }
 
 func (t *headerTransport) RoundTrip(req *http.Request) (*http.Response, error) {
-	// Check if headers map is nil before iterating
-	if t.headers != nil {
-		for key, value := range t.headers {
-			req.Header.Set(key, value)
-		}
-	}
-
-	// Check if base transport is nil
-	if t.base == nil {
-		return nil, fmt.Errorf("base transport is nil")
+	for key, value := range t.headers {
+		req.Header.Set(key, value)
 	}
 
 	return t.base.RoundTrip(req)
@@ -145,15 +137,12 @@ func (n *Node) Metadata() *services.MetadataService {
 		return nil
 	}
 
-	// Safe type assertion with check
-	metadataService, ok := service.(*services.MetadataService)
+	svc, ok := service.(*services.MetadataService)
 	if !ok {
-		n.log.WithField("service", service).Error("failed to cast service to MetadataService")
-
 		return nil
 	}
 
-	return metadataService
+	return svc
 }
 
 func (n *Node) Name() string {

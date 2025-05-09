@@ -4,7 +4,6 @@ import (
 	"context"
 	"crypto/ecdsa"
 	"errors"
-	"fmt"
 	"math"
 	"math/big"
 
@@ -40,11 +39,6 @@ func (n *Node) NonceAt(ctx context.Context, address string) (*uint64, error) {
 		return nil, err
 	}
 
-	// Check if blockNumber is nil before dereferencing
-	if blockNumber == nil {
-		return nil, fmt.Errorf("received nil block number")
-	}
-
 	var nonce uint64
 
 	_, err = n.rpc.Do(ctx, ethrpc.NonceAt(common.HexToAddress(address), big.NewInt(convertBlockNumber(*blockNumber))).Into(&nonce))
@@ -52,9 +46,7 @@ func (n *Node) NonceAt(ctx context.Context, address string) (*uint64, error) {
 		return nil, err
 	}
 
-	result := nonce
-
-	return &result, nil
+	return &nonce, nil
 }
 
 func (n *Node) ChainID(ctx context.Context) (*big.Int, error) {
@@ -131,32 +123,14 @@ func (n *Node) SuggestFees(ctx context.Context) (gasTipCap, gasFeeCap *big.Int, 
 		return nil, nil, err
 	}
 
-	// Check for nil data
-	if feeHistory == nil {
-		return nil, nil, errors.New("nil FeeHistory data")
-	}
-
-	// Check base fee and reward arrays have valid data
 	if len(feeHistory.BaseFee) < 2 || len(feeHistory.Reward) == 0 {
-		return nil, nil, errors.New("invalid FeeHistory data: insufficient data points")
+		return nil, nil, errors.New("invalid FeeHistory data")
 	}
 
-	// Create arrays to accumulate base fees and tips
 	baseFees := make([]*big.Int, len(feeHistory.Reward))
 	tips := make([]*big.Int, len(feeHistory.Reward))
 
-	// Ensure we don't access beyond the bounds of the BaseFee array
 	for i := range feeHistory.Reward {
-		// Check that we don't access beyond the BaseFee array bounds
-		if i >= len(feeHistory.BaseFee) {
-			return nil, nil, errors.New("invalid FeeHistory data: BaseFee array too short")
-		}
-
-		// Check that the reward array at index i has at least one element
-		if len(feeHistory.Reward[i]) == 0 {
-			return nil, nil, errors.New("invalid FeeHistory data: empty reward percentile array")
-		}
-
 		baseFees[i] = feeHistory.BaseFee[i]
 		tips[i] = feeHistory.Reward[i][0]
 	}
@@ -185,15 +159,6 @@ func (n *Node) DeployContract(ctx context.Context, contract *[]byte, from string
 	gasTipCap, gasFeeCap, err := n.SuggestFees(ctx)
 	if err != nil {
 		return nil, err
-	}
-
-	// Check for nil pointers before dereferencing
-	if nonce == nil {
-		return nil, fmt.Errorf("received nil nonce")
-	}
-
-	if contract == nil {
-		return nil, fmt.Errorf("received nil contract data")
 	}
 
 	tx := types.NewTx(&types.DynamicFeeTx{

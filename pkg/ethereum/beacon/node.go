@@ -58,29 +58,15 @@ func NewNode(ctx context.Context, log logrus.FieldLogger, name string, config *C
 func (b *Node) Start(ctx context.Context) error {
 	s := gocron.NewScheduler(time.Local)
 
-	// Create a new context with cancellation to manage goroutine lifecycle
-	ctxWithCancel, cancel := context.WithCancel(ctx)
-	defer cancel() // Ensure resources are cleaned up on function exit
-
 	errs := make(chan error, 1)
-	done := make(chan struct{})
 
 	go func() {
-		defer close(done) // Signal the goroutine is finished when exiting
-
 		wg := sync.WaitGroup{}
 
 		for _, service := range b.services {
-			// Check if context is cancelled before starting next service
-			select {
-			case <-ctxWithCancel.Done():
-				return
-			default:
-			}
-
 			wg.Add(1)
 
-			service.OnReady(ctxWithCancel, func(ctx context.Context) error {
+			service.OnReady(ctx, func(ctx context.Context) error {
 				b.log.WithField("service", service.Name()).Info("Service is ready")
 
 				wg.Done()
@@ -90,10 +76,8 @@ func (b *Node) Start(ctx context.Context) error {
 
 			b.log.WithField("service", service.Name()).Info("Starting service")
 
-			if err := service.Start(ctxWithCancel); err != nil {
+			if err := service.Start(ctx); err != nil {
 				errs <- fmt.Errorf("failed to start service: %w", err)
-
-				return
 			}
 
 			wg.Wait()
@@ -102,43 +86,22 @@ func (b *Node) Start(ctx context.Context) error {
 		b.log.Info("All services are ready")
 
 		for _, callback := range b.onReadyCallbacks {
-			// Check for context cancellation between callbacks
-			select {
-			case <-ctxWithCancel.Done():
-				return
-			default:
-			}
-
-			if err := callback(ctxWithCancel); err != nil {
+			if err := callback(ctx); err != nil {
 				errs <- fmt.Errorf("failed to run on ready callback: %w", err)
-
-				return
 			}
 		}
 	}()
 
-	// Use the context for scheduler as well
 	s.StartAsync()
-
-	// Make sure to clean up scheduler
-	defer func() {
-		s.Stop()
-	}()
 
 	if err := b.beacon.Start(ctx); err != nil {
 		return err
 	}
 
-	// Wait for either an error, completion, or context cancellation
 	select {
 	case err := <-errs:
 		return err
-	case <-done:
-		// All tasks completed normally
-		return nil
 	case <-ctx.Done():
-		b.log.Info("Context cancelled, stopping beacon node")
-
 		return ctx.Err()
 	}
 }
@@ -168,15 +131,12 @@ func (b *Node) Metadata() *services.MetadataService {
 		return nil
 	}
 
-	// Safe type assertion with check
-	metadataService, ok := service.(*services.MetadataService)
+	svc, ok := service.(*services.MetadataService)
 	if !ok {
-		b.log.WithField("service", service).Error("failed to cast service to MetadataService")
-
 		return nil
 	}
 
-	return metadataService
+	return svc
 }
 
 func (b *Node) OnReady(_ context.Context, callback func(ctx context.Context) error) {
@@ -184,11 +144,6 @@ func (b *Node) OnReady(_ context.Context, callback func(ctx context.Context) err
 }
 
 func (b *Node) Synced(ctx context.Context) error {
-	// Check if beacon client is available
-	if b.beacon == nil {
-		return errors.New("beacon client is not initialized")
-	}
-
 	status := b.beacon.Status()
 	if status == nil {
 		return errors.New("missing beacon status")
@@ -203,13 +158,7 @@ func (b *Node) Synced(ctx context.Context) error {
 		return errors.New("beacon node is not synced")
 	}
 
-	// Get metadata with nil check
-	metadata := b.Metadata()
-	if metadata == nil {
-		return errors.New("missing metadata service")
-	}
-
-	wallclock := metadata.Wallclock()
+	wallclock := b.Metadata().Wallclock()
 	if wallclock == nil {
 		return errors.New("missing wallclock")
 	}
