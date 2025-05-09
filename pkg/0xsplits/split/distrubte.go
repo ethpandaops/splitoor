@@ -3,8 +3,10 @@ package split
 import (
 	"context"
 	"fmt"
+	"math"
 	"math/big"
 	"sort"
+	"strings"
 	"sync"
 	"time"
 
@@ -39,16 +41,25 @@ func (p *DistributeETHParams) order() error {
 	return nil
 }
 
-func (p *DistributeETHParams) encode(splitAddress string) []interface{} {
+func (p *DistributeETHParams) encode(splitAddress string) ([]interface{}, error) {
 	// Create pairs for sorting
 	pairs := make([][2]interface{}, len(p.Accounts))
 	for i := range p.Accounts {
 		pairs[i] = [2]interface{}{p.Accounts[i], p.PercentageAllocations[i]}
 	}
 
-	// Sort by account address
+	// Sort by account address with safe type assertions
 	sort.Slice(pairs, func(i, j int) bool {
-		return pairs[i][0].(string) < pairs[j][0].(string)
+		str1, ok1 := pairs[i][0].(string)
+		str2, ok2 := pairs[j][0].(string)
+
+		// If either conversion fails, we'll maintain stable sort order
+		// This shouldn't happen with properly-formed data, but prevents panics
+		if !ok1 || !ok2 {
+			return i < j // Maintain stable ordering
+		}
+
+		return str1 < str2
 	})
 
 	// Separate back into sorted slices
@@ -56,11 +67,17 @@ func (p *DistributeETHParams) encode(splitAddress string) []interface{} {
 	allocations := make([]uint32, len(p.PercentageAllocations))
 
 	for i := range pairs {
-		accounts[i] = common.HexToAddress(pairs[i][0].(string))
+		// Safely perform the type assertion with check
+		accountStr, ok := pairs[i][0].(string)
+		if !ok {
+			return nil, fmt.Errorf("invalid account type at index %d", i)
+		}
+
+		accounts[i] = common.HexToAddress(accountStr)
 
 		allocation, ok := pairs[i][1].(uint32)
 		if !ok {
-			return nil
+			return nil, fmt.Errorf("invalid allocation type at index %d", i)
 		}
 
 		allocations[i] = allocation
@@ -77,7 +94,7 @@ func (p *DistributeETHParams) encode(splitAddress string) []interface{} {
 		allocations,
 		p.DistributorFee,
 		common.HexToAddress(distributorAddress),
-	}
+	}, nil
 }
 
 func (c *Client) DistributeETH(ctx context.Context, node *execution.Node, contractABI *ethcoder.ABI, from, privateKey string, gasLimit uint64, params *DistributeETHParams) error {
@@ -89,12 +106,19 @@ func (c *Client) DistributeETH(ctx context.Context, node *execution.Node, contra
 		return fmt.Errorf("split address is not set")
 	}
 
+	splitAddress := *c.splitAddress // Dereference safely after nil check
+
 	pKey, err := crypto.HexToECDSA(privateKey)
 	if err != nil {
 		return err
 	}
 
-	calldata, err := contractABI.EncodeMethodCalldata("distributeETH", params.encode(*c.splitAddress))
+	encodeParams, err := params.encode(splitAddress)
+	if err != nil {
+		return fmt.Errorf("failed to encode parameters: %w", err)
+	}
+
+	calldata, err := contractABI.EncodeMethodCalldata("distributeETH", encodeParams)
 	if err != nil {
 		return err
 	}
@@ -104,33 +128,74 @@ func (c *Client) DistributeETH(ctx context.Context, node *execution.Node, contra
 		return err
 	}
 
-	ctx, cancel := context.WithTimeout(ctx, 10*time.Minute)
+	// Create a new context with timeout to prevent hanging indefinitely
+	pollCtx, cancel := context.WithTimeout(ctx, 10*time.Minute)
 	defer cancel()
 
 	c.log.WithField("tx", *txHash).Info("Waiting for transaction to be included in a block")
 
-	for {
-		var isPending bool
+	// Add a ticker for controlled polling with backoff
+	ticker := time.NewTicker(1 * time.Second)
+	defer ticker.Stop()
 
-		_, isPending, err = node.TransactionByHash(ctx, *txHash)
-		if err != nil {
-			return err
+	// Track attempts for exponential backoff
+	attempt := 0
+	maxAttempts := 600 // 10 minutes worth of 1-second attempts
+
+	for attempt < maxAttempts {
+		select {
+		case <-pollCtx.Done():
+			// Context cancelled or timed out
+			return fmt.Errorf("context cancelled or timed out while waiting for transaction: %w", pollCtx.Err())
+		case <-ticker.C:
+			// Time to check transaction status
+			var isPending bool
+
+			_, isPending, err = node.TransactionByHash(pollCtx, *txHash)
+			if err != nil {
+				// If we're getting transient errors, continue polling
+				if strings.Contains(err.Error(), "not found") {
+					attempt++
+
+					continue
+				}
+
+				return err
+			}
+
+			if !isPending {
+				// Transaction is no longer pending, we can proceed
+				goto TransactionComplete
+			}
+
+			// Increment attempt counter
+			attempt++
+
+			// Apply exponential backoff after 10 attempts
+			if attempt > 10 {
+				backoffDuration := time.Duration(math.Min(float64(attempt-5), 30)) * time.Second
+				ticker.Reset(backoffDuration)
+			}
 		}
-
-		if !isPending {
-			break
-		}
-
-		time.Sleep(time.Second)
 	}
 
+	// If we reach here, we've exceeded our maximum attempts
+	return fmt.Errorf("exceeded maximum polling attempts (%d) waiting for transaction", maxAttempts)
+
+TransactionComplete:
 	receipt, err := node.TransactionReceipt(ctx, *txHash)
+
 	if err != nil {
 		return err
 	}
 
+	// Check for nil receipt
+	if receipt == nil {
+		return fmt.Errorf("received nil transaction receipt for tx hash %s", *txHash)
+	}
+
 	if receipt.Status == types.ReceiptStatusFailed {
-		return fmt.Errorf("transaction failed")
+		return fmt.Errorf("transaction %s failed with status: %d", *txHash, receipt.Status)
 	}
 
 	return nil

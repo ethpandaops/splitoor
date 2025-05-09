@@ -148,16 +148,34 @@ type SafeResponse struct {
 }
 
 func (s *SafeResponse) CheckSigners(signers []string) bool {
+	// Check for nil slices or empty responses
+	if s == nil {
+		return false
+	}
+
+	// len() for nil slices is defined as zero, so we can simplify this check
+	if len(signers) == 0 {
+		return false
+	}
+
+	// len() for nil slices is defined as zero, so we can simplify this check
+	if len(s.Owners) == 0 {
+		return false
+	}
+
+	// Build map of actual signers
 	actualSigners := make(map[string]bool)
 	for _, owner := range s.Owners {
 		actualSigners[strings.ToLower(owner.Value)] = true
 	}
 
+	// Check if all provided signers are actual signers
 	for _, signer := range signers {
 		if !actualSigners[strings.ToLower(signer)] {
 			return false
 		}
 	}
 
+	// Check if number of signers matches number of owners
 	return len(signers) == len(s.Owners)
 }

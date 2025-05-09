@@ -103,7 +103,13 @@ func (t *Telegram) Publish(ctx context.Context, e event.Event) error {
 	description := e.GetDescriptionMarkdown(t.includeMonitorName, t.includeGroupName)
 
 	if t.docs != nil {
-		docURL := strings.ReplaceAll(*t.docs, ":group", url.QueryEscape(e.GetGroup()))
+		// Safe way to get the group, ensuring it's never nil
+		group := e.GetGroup()
+
+		// Replace the placeholder with the group name
+		docURL := strings.ReplaceAll(*t.docs, ":group", url.QueryEscape(group))
+
+		// Add the docs link to the description
 		description = fmt.Sprintf("%s\n\n[**Go to docs**](%s)", description, docURL)
 	}
 	// Escape special characters for Telegram's MarkdownV2 format

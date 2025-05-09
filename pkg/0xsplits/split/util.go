@@ -20,9 +20,18 @@ func ParseRecipients(accounts []string, percentageAllocations []uint32) (recipie
 		pairs[i] = [2]interface{}{accounts[i], percentageAllocations[i]}
 	}
 
-	// Sort by account address
+	// Sort by account address with safe type assertions
 	sort.Slice(pairs, func(i, j int) bool {
-		return pairs[i][0].(string) < pairs[j][0].(string)
+		str1, ok1 := pairs[i][0].(string)
+		str2, ok2 := pairs[j][0].(string)
+
+		// If either conversion fails, we'll maintain stable sort order
+		// This shouldn't happen with properly-formed data, but prevents panics
+		if !ok1 || !ok2 {
+			return i < j // Maintain stable ordering
+		}
+
+		return str1 < str2
 	})
 
 	// Separate back into sorted slices

@@ -1,6 +1,9 @@
 package ethereum
 
 import (
+	"fmt"
+	"sync"
+
 	"github.com/prometheus/client_golang/prometheus"
 )
 
@@ -8,24 +11,60 @@ type Metrics struct {
 	nodesTotal *prometheus.GaugeVec
 }
 
-func NewMetrics(namespace, monitorName string) Metrics {
-	constLabels := prometheus.Labels{"monitor": monitorName}
-	labels := []string{"type", "status"}
+var (
+	metricsInstances = make(map[string]*Metrics)
+	metricsMutex     sync.Mutex
+)
 
-	m := Metrics{
-		nodesTotal: prometheus.NewGaugeVec(prometheus.GaugeOpts{
-			Namespace:   namespace,
-			Name:        "nodes_total",
-			Help:        "Total number of nodes in the pool",
-			ConstLabels: constLabels,
-		}, labels),
+// GetMetricsInstance returns a metrics instance for the given namespace and monitor
+// For production use, this will return a singleton for each namespace+monitor combination
+// For testing, include a unique suffix in the namespace to avoid collisions
+func GetMetricsInstance(namespace, monitor string) *Metrics {
+	key := fmt.Sprintf("%s-%s", namespace, monitor)
+
+	metricsMutex.Lock()
+	defer metricsMutex.Unlock()
+
+	if instance, exists := metricsInstances[key]; exists {
+		return instance
 	}
 
-	prometheus.MustRegister(m.nodesTotal)
+	// Create new metrics instance with the provided namespace
+	constLabels := prometheus.Labels{"monitor": monitor}
+	labels := []string{"type", "status"}
 
-	return m
+	// Create a metrics collector but register it only if it doesn't exist yet
+	nodesTotal := prometheus.NewGaugeVec(prometheus.GaugeOpts{
+		Namespace:   namespace,
+		Name:        "nodes_total",
+		Help:        "Total number of nodes in the pool",
+		ConstLabels: constLabels,
+	}, labels)
+
+	// Try to register but don't panic if it fails (already registered)
+	if err := prometheus.Register(nodesTotal); err != nil {
+		// If it's already registered, try to find the existing one
+		if are, ok := err.(prometheus.AlreadyRegisteredError); ok {
+			// If we can recover the existing metric, use it
+			if existing, ok := are.ExistingCollector.(*prometheus.GaugeVec); ok {
+				nodesTotal = existing
+			}
+		}
+	}
+
+	instance := &Metrics{
+		nodesTotal: nodesTotal,
+	}
+
+	metricsInstances[key] = instance
+
+	return instance
 }
 
-func (m Metrics) SetNodesTotal(count float64, labels []string) {
+func (m *Metrics) SetNodesTotal(count float64, labels []string) {
+	if m == nil || m.nodesTotal == nil {
+		return
+	}
+
 	m.nodesTotal.WithLabelValues(labels...).Set(count)
 }

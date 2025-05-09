@@ -1,8 +1,8 @@
 module github.com/ethpandaops/splitoor
 
-go 1.23
+go 1.24
 
-toolchain go1.23.4
+toolchain go1.24.3
 
 require (
 	github.com/0xsequence/ethkit v1.30.6

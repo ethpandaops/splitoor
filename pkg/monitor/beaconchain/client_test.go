@@ -114,10 +114,22 @@ func TestClient_GetValidators(t *testing.T) {
 			require.NoError(t, err)
 			assert.Equal(t, tt.expectedLen, len(validators))
 
-			if tt.serverResponse != nil {
+			if tt.serverResponse != nil && tt.serverResponse.Data != nil {
 				for _, v := range tt.serverResponse.Data {
-					assert.Equal(t, v.Balance, validators[v.Pubkey].Balance)
-					assert.Equal(t, v.Status, validators[v.Pubkey].Status)
+					// Safely check if the validator exists in the map
+					validator, exists := validators[v.Pubkey]
+					if !exists {
+						t.Errorf("Expected validator with pubkey %s to exist in the result map", v.Pubkey)
+						continue
+					}
+					
+					// Safely check values
+					if validator != nil {
+						assert.Equal(t, v.Balance, validator.Balance)
+						assert.Equal(t, v.Status, validator.Status)
+					} else {
+						t.Errorf("Validator with pubkey %s is nil", v.Pubkey)
+					}
 				}
 			}
 		})
