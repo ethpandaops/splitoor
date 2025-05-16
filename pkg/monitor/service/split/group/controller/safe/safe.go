@@ -414,6 +414,8 @@ func (c *Safe) updateTransactionMetrics(txData *TransactionData) {
 		boolToFloat64(txData.HasNextRecoveryTx),
 		[]string{c.name, c.address, c.Type()},
 	)
+
+	c.metrics.ResetTransactionRecoveryPreSigned(c.name, c.address, c.Type())
 	c.metrics.UpdateTransactionRecoveryPreSigned(
 		boolToFloat64(txData.CurrentConfirmations == expectedConfirmations),
 		[]string{c.name, c.address, c.Type(), strconv.Itoa(expectedConfirmations), strconv.Itoa(txData.CurrentConfirmations)},

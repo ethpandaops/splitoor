@@ -134,6 +134,14 @@ func (m Metrics) UpdateTransactionRecoveryPreSigned(transactionRecoveryPreSigned
 	m.transactionRecoveryPreSigned.WithLabelValues(labels...).Set(transactionRecoveryPreSigned)
 }
 
+func (m Metrics) ResetTransactionRecoveryPreSigned(group, controller, source string) {
+	m.transactionRecoveryPreSigned.Delete(prometheus.Labels{
+		"group":      group,
+		"controller": controller,
+		"source":     source,
+	})
+}
+
 func (m Metrics) UpdateTransactionRecoveryValid(transactionRecoveryValid float64, labels []string) {
 	m.transactionRecoveryValid.WithLabelValues(labels...).Set(transactionRecoveryValid)
 }
