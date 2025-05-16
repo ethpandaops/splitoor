@@ -7,11 +7,12 @@ import (
 )
 
 type Metrics struct {
-	balance      *prometheus.GaugeVec
-	hashStable   *prometheus.GaugeVec
-	hashInitial  *prometheus.GaugeVec
-	hashRecovery *prometheus.GaugeVec
-	controller   *prometheus.GaugeVec
+	balance        *prometheus.GaugeVec
+	hashStable     *prometheus.GaugeVec
+	hashInitial    *prometheus.GaugeVec
+	hashRecovery   *prometheus.GaugeVec
+	hashUnexpected *prometheus.GaugeVec
+	controller     *prometheus.GaugeVec
 }
 
 var (
@@ -60,6 +61,15 @@ func GetMetricsInstance(namespace, monitor string) *Metrics {
 				},
 				[]string{"group", "source", "split_address", "expected_hash", "actual_hash"},
 			),
+			hashUnexpected: prometheus.NewGaugeVec(
+				prometheus.GaugeOpts{
+					Namespace:   namespace,
+					Name:        "hash_unexpected",
+					Help:        "The hash of the split doesn't match any expected hash.",
+					ConstLabels: constLabels,
+				},
+				[]string{"group", "source", "split_address", "actual_hash"},
+			),
 			controller: prometheus.NewGaugeVec(
 				prometheus.GaugeOpts{
 					Namespace:   namespace,
@@ -75,6 +85,7 @@ func GetMetricsInstance(namespace, monitor string) *Metrics {
 		prometheus.MustRegister(metricsInstance.hashStable)
 		prometheus.MustRegister(metricsInstance.hashInitial)
 		prometheus.MustRegister(metricsInstance.hashRecovery)
+		prometheus.MustRegister(metricsInstance.hashUnexpected)
 		prometheus.MustRegister(metricsInstance.controller)
 	})
 
@@ -97,6 +108,10 @@ func (m Metrics) UpdateHashRecovery(hash float64, labels []string) {
 	m.hashRecovery.WithLabelValues(labels...).Set(hash)
 }
 
+func (m Metrics) UpdateHashUnexpected(hash float64, labels []string) {
+	m.hashUnexpected.WithLabelValues(labels...).Set(hash)
+}
+
 func (m Metrics) UpdateController(controller float64, labels []string) {
 	m.controller.WithLabelValues(labels...).Set(controller)
 }
@@ -111,6 +126,10 @@ func (m Metrics) ClearHashInitial(labels []string) {
 
 func (m Metrics) ClearHashRecovery(labels []string) {
 	m.hashRecovery.DeleteLabelValues(labels...)
+}
+
+func (m Metrics) ClearHashUnexpected(labels []string) {
+	m.hashUnexpected.DeleteLabelValues(labels...)
 }
 
 func (m Metrics) ClearController(labels []string) {
