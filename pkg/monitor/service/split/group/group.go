@@ -320,12 +320,14 @@ func (g *Group) checkHash(ctx context.Context) {
 			g.metrics.ClearHashStable([]string{g.name, node.Name(), g.address, g.stableHash, previousHashUnknown})
 			g.metrics.ClearHashInitial([]string{g.name, node.Name(), g.address, g.initialHash, previousHashUnknown})
 			g.metrics.ClearHashRecovery([]string{g.name, node.Name(), g.address, g.recoveryHash, previousHashUnknown})
+			g.metrics.ClearHashUnexpected([]string{g.name, node.Name(), g.address, previousHashUnknown})
 		}
 
 		if previousHashInitial != previousHashUnknown && previousHashInitial != "" && previousHashInitial != actualHashString {
 			g.metrics.ClearHashStable([]string{g.name, node.Name(), g.address, g.stableHash, previousHashInitial})
 			g.metrics.ClearHashInitial([]string{g.name, node.Name(), g.address, g.initialHash, previousHashInitial})
 			g.metrics.ClearHashRecovery([]string{g.name, node.Name(), g.address, g.recoveryHash, previousHashInitial})
+			g.metrics.ClearHashUnexpected([]string{g.name, node.Name(), g.address, previousHashInitial})
 		}
 
 		if previousHashRecovery != previousHashUnknown && previousHashRecovery != previousHashInitial &&
@@ -333,6 +335,7 @@ func (g *Group) checkHash(ctx context.Context) {
 			g.metrics.ClearHashStable([]string{g.name, node.Name(), g.address, g.stableHash, previousHashRecovery})
 			g.metrics.ClearHashInitial([]string{g.name, node.Name(), g.address, g.initialHash, previousHashRecovery})
 			g.metrics.ClearHashRecovery([]string{g.name, node.Name(), g.address, g.recoveryHash, previousHashRecovery})
+			g.metrics.ClearHashUnexpected([]string{g.name, node.Name(), g.address, previousHashRecovery})
 		}
 
 		stableHashVal := float64(0)
@@ -350,9 +353,15 @@ func (g *Group) checkHash(ctx context.Context) {
 			recoveryHashVal = 1
 		}
 
+		unexpectedHashVal := float64(0)
+		if actualHashString != g.stableHash && actualHashString != g.initialHash && actualHashString != g.recoveryHash {
+			unexpectedHashVal = 1
+		}
+
 		g.metrics.UpdateHashStable(stableHashVal, []string{g.name, node.Name(), g.address, g.stableHash, actualHashString})
 		g.metrics.UpdateHashInitial(initialHashVal, []string{g.name, node.Name(), g.address, g.initialHash, actualHashString})
 		g.metrics.UpdateHashRecovery(recoveryHashVal, []string{g.name, node.Name(), g.address, g.recoveryHash, actualHashString})
+		g.metrics.UpdateHashUnexpected(unexpectedHashVal, []string{g.name, node.Name(), g.address, actualHashString})
 
 		shouldAlertUnknown := g.hashUnknownAlert.Update(actualHashString)
 		if shouldAlertUnknown {
