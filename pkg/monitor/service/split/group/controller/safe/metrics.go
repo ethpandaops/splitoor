@@ -70,7 +70,7 @@ func GetMetricsInstance(namespace, monitor string) *Metrics {
 					Help:        "Whether the recovery transaction is pre-signed.",
 					ConstLabels: constLabels,
 				},
-				[]string{"group", "controller", "source", "required", "submitted"},
+				[]string{"group", "controller", "source"},
 			),
 			transactionRecoveryValid: prometheus.NewGaugeVec(
 				prometheus.GaugeOpts{
@@ -132,10 +132,6 @@ func (m Metrics) UpdateTransactionRecoveryExists(transactionRecoveryExists float
 
 func (m Metrics) UpdateTransactionRecoveryPreSigned(transactionRecoveryPreSigned float64, labels []string) {
 	m.transactionRecoveryPreSigned.WithLabelValues(labels...).Set(transactionRecoveryPreSigned)
-}
-
-func (m Metrics) ClearTransactionRecoveryPreSigned(labels []string) {
-	m.transactionRecoveryPreSigned.DeleteLabelValues(labels...)
 }
 
 func (m Metrics) UpdateTransactionRecoveryValid(transactionRecoveryValid float64, labels []string) {
