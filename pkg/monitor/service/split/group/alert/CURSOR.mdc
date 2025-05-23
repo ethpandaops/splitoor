@@ -1,0 +1,18 @@
+---
+description: Split Group Alert - Stateful alert management for split hash and controller changes
+globs: 
+  - "*.go"
+alwaysApply: false
+---
+
+# Split Group Alert Component
+
+Stateful alert management system that tracks and triggers notifications for split hash transitions and controller changes.
+
+## Key Integration Pattern
+Edge-triggered alerting pattern that fires once per state transition, preventing duplicate notifications during sustained alert conditions.
+
+## Important Constraints
+- All alert types use mutex-based thread safety for concurrent updates
+- Alert state persists until the triggering condition resolves
+- Hash alerts support initial, recovery, and unknown state detection patterns

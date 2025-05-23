@@ -1,0 +1,19 @@
+---
+description: SES - AWS Simple Email Service adapter for email notifications
+globs: 
+  - "*.go"
+  - "*_test.go"
+alwaysApply: false
+---
+
+# SES Component
+
+AWS Simple Email Service adapter that sends monitoring event notifications via email.
+
+## Key Integration Pattern
+Direct AWS SDK v1 integration without retry logic, relying on SDK defaults for resilience.
+
+## Important Constraints
+- Categorize SES-specific errors (message_rejected, domain_not_verified) for granular metrics
+- No connection pooling - each Publish() creates a new SES API call
+- Support dynamic documentation URL injection in email bodies based on event groups

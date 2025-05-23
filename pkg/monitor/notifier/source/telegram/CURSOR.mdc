@@ -1,0 +1,19 @@
+---
+description: Telegram - Notification adapter for Telegram Bot API with markdown formatting
+globs: 
+  - "*.go"
+  - "*_test.go"
+alwaysApply: false
+---
+
+# Telegram Source
+
+Telegram Bot API adapter for delivering monitoring events with proper markdown escaping and thread support.
+
+## Key Integration Pattern
+Uses go-telegram/bot client with MarkdownV2 formatting and thread-aware message routing for organized notifications.
+
+## Important Constraints
+- Escape special markdown characters (-, ., _) for Telegram's strict MarkdownV2 parser
+- Support optional ThreadID for topic-based channel organization
+- Track delivery errors by type (invalid_chat_id, send_message) for debugging

@@ -1,0 +1,19 @@
+---
+description: Validator Event - Concrete validator monitoring event implementations
+globs: 
+  - "*.go"
+  - "*_test.go"
+alwaysApply: false
+---
+
+# Validator Event Component
+
+Concrete validator monitoring event implementations for balance, status, and withdrawal credential alerts.
+
+## Key Integration Pattern
+- Use string builder pattern for efficient string concatenation in description methods
+- Format ETH balances with appropriate decimal precision (4 decimal places)
+
+## Important Constraints
+- Always include UTC timestamps in standardized format
+- Balance values must be stored in wei (uint64) and converted for display

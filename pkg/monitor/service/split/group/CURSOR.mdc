@@ -1,0 +1,19 @@
+---
+description: Split Group - Manages and monitors groups of 0xSplits smart contracts with state-based hash tracking
+globs: 
+  - "*.go"
+  - "**/*.go"
+alwaysApply: false
+---
+
+# Split Group Component
+
+Manages and monitors groups of 0xSplits smart contracts, tracking hash states, controllers, and account allocations.
+
+## Key Integration Pattern
+State machine pattern for hash tracking (stable/initial/recovery states) with controller abstraction supporting both EOA and Safe controller types.
+
+## Important Constraints
+- Total account allocations must always equal 1000000 (100%)
+- Singleton metrics pattern - use GetMetricsInstance() for metric access
+- Hash state transitions trigger alerts through the event publisher system

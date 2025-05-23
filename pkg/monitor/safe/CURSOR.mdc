@@ -1,0 +1,19 @@
+---
+description: Safe - HTTP client for Safe Transaction Service API monitoring
+globs: 
+  - "*.go"
+  - "*_test.go"
+alwaysApply: false
+---
+
+# Safe Component
+
+HTTP client for interacting with the Safe Transaction Service API to monitor multi-signature wallet transactions.
+
+## Key Integration Pattern
+Chain-aware API client that tracks queued Safe transactions requiring additional signatures, with comprehensive Prometheus metrics instrumentation.
+
+## Important Constraints
+- Chain ID must be set before any API requests (thread-safe via mutex)
+- No built-in retry logic - resilience handled by higher layers
+- Verify transaction signers match actual Safe owners using case-insensitive comparison

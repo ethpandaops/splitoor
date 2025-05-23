@@ -1,0 +1,22 @@
+---
+description: Validator Service - Monitors Ethereum validators across multiple data sources with configurable alerting
+globs: 
+  - "*.go"
+  - "group/*.go"
+  - "group/alert/*.go"
+alwaysApply: false
+---
+
+# Validator Service
+
+Monitors Ethereum validators by tracking balance, status, and withdrawal credentials across beacon nodes and beaconcha.in API.
+
+## Key Patterns
+- **Multi-source validation**: Always fetch from both beacon pool and beaconcha.in for redundancy
+- **12-second tick cycle**: Synchronize monitoring with Ethereum slot time
+- **Group-based organization**: Validators managed in logical groups with per-group thresholds
+
+## Important Constraints
+- Respect beaconcha.in rate limits: chunk requests to 100 validators with delays
+- Balance threshold: Alert when validator drops below 31.95 ETH
+- Expected statuses: Only `active_online` and `active_offline` are normal

@@ -1,0 +1,19 @@
+---
+description: Split Group Controller - Factory pattern for creating controller instances (EOA or Safe) with type-specific configurations
+globs: 
+  - "*.go"
+  - "**/*.go"
+alwaysApply: false
+---
+
+# Split Group Controller Component
+
+Factory pattern for creating controller instances (EOA or Safe) with type-specific configurations for managing 0xSplits contracts.
+
+## Key Integration Pattern
+Controller factory pattern with RawMessage for delayed configuration unmarshalling, allowing type-specific config parsing after controller type determination.
+
+## Important Constraints
+- Controller type must be validated before instantiation (no unknown types)
+- Config defaults must be applied after unmarshalling for consistent initialization
+- Each controller implementation must provide Start/Stop lifecycle methods and expose Type/Name/Address accessors

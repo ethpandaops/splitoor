@@ -1,0 +1,19 @@
+---
+description: Split - 0xSplits contract monitoring service with group-based allocation tracking
+globs: 
+  - "*.go"
+  - "group/*.go"
+  - "group/**/*.go"
+alwaysApply: false
+---
+
+# Split Component
+
+Monitors 0xSplits smart contracts to track allocation changes, controller updates, and distribution events.
+
+## Key Integration Pattern
+Hierarchical group structure where each split group maintains its own accounts, controllers, and alert system with state persistence.
+
+## Important Constraints
+- Controller types (EOA/Safe) must be determined at initialization and handle type-specific monitoring logic
+- Hash-based alert system tracks initial, recovery, and unknown hash changes for distribution monitoring

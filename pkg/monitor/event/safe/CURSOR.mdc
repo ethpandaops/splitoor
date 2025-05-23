@@ -1,0 +1,18 @@
+---
+description: Safe Events - Domain-specific event types for Safe transaction monitoring and anomaly detection
+globs: 
+  - "*.go"
+  - "*_test.go"
+alwaysApply: false
+---
+
+# Safe Events Component
+
+Domain-specific event types for Safe transaction monitoring and anomaly detection.
+
+## Key Integration Pattern
+Each event type represents a specific Safe anomaly (threshold mismatch, signer issues, recovery transaction problems) with structured data for notification formatting.
+
+## Important Constraints
+- Events must include Safe address and relevant context (transaction IDs, signer counts, thresholds)
+- Test files must verify all notification format methods (text, markdown, HTML)

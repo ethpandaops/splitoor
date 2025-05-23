@@ -1,0 +1,19 @@
+---
+description: SMTP - Email notification adapter with TLS support and detailed error tracking
+globs: 
+  - "*.go"
+  - "*_test.go"
+alwaysApply: false
+---
+
+# SMTP Component
+
+Email notification adapter that delivers monitoring events via SMTP with TLS support and comprehensive error tracking.
+
+## Key Integration Pattern
+Implements dual SMTP delivery modes - direct TLS connection with manual control flow for detailed error tracking, and standard smtp.SendMail for non-TLS connections.
+
+## Important Constraints
+- Track granular error types (dial, TLS, auth, sender, recipient, data, write) in Prometheus metrics
+- Support both authenticated and anonymous SMTP connections
+- Always use Bcc for recipient lists to protect email privacy

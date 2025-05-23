@@ -1,0 +1,21 @@
+---
+description: Execution layer node client with RPC operations and multi-client support
+globs: 
+  - "*.go"
+  - "services/*.go"
+alwaysApply: false
+---
+
+# Execution Component
+
+Ethereum execution layer client supporting multiple node implementations with RPC operations.
+
+## Key Integration Pattern
+- Multi-client detection through metadata service (Geth, Nethermind, Besu, Erigon, Reth)
+- Service-based architecture with lifecycle management for modular functionality
+- Custom header transport for authentication with execution nodes
+
+## Important Constraints
+- Always use context for cancellation in RPC operations
+- Fee calculation must include 12.5% buffer for base fee projection
+- Service startup must wait for all dependencies before executing callbacks
