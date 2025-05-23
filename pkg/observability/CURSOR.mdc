@@ -1,0 +1,20 @@
+---
+description: Observability - Prometheus metrics server management for monitoring
+globs: 
+  - "*.go"
+alwaysApply: false
+---
+
+# Observability Component
+
+Prometheus metrics server lifecycle management with singleton pattern for centralized monitoring.
+
+## Key Integration Pattern
+- Single metrics server instance shared across all services via sync.Once
+- Graceful shutdown with context-aware cleanup
+- Thread-safe metric registration using prometheus.MustRegister
+
+## Important Constraints
+- Server must be started before any metrics are exposed
+- Only one metrics server per application instance
+- Collectors must be registered before server starts

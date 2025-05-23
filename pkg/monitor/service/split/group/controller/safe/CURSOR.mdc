@@ -1,0 +1,20 @@
+---
+description: Safe Controller - Monitors Safe multisig wallets controlling 0xSplits contracts with transaction validation
+globs: 
+  - "*.go"
+  - "alert/*.go"
+  - "**/*_test.go"
+alwaysApply: false
+---
+
+# Safe Controller Component
+
+Monitors Safe multisig wallets that control 0xSplits contracts, validating recovery transactions and signer configurations.
+
+## Key Integration Pattern
+Alert-based monitoring pattern where each alert type (queue excess, missing recovery, invalid params) maintains its own state to prevent duplicate notifications.
+
+## Important Constraints
+- Recovery transaction allocations must match expected values exactly (no tolerance)
+- Uses singleton metrics pattern - always access via GetMetricsInstance()
+- Transaction queue monitoring runs every 12 seconds with Safe API polling

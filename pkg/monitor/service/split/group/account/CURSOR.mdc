@@ -1,0 +1,18 @@
+---
+description: Split Group Account - Individual account within a 0xSplits group with balance monitoring
+globs: 
+  - "*.go"
+  - "*_test.go"
+alwaysApply: false
+---
+
+# Split Group Account Component
+
+Individual account within a 0xSplits group that monitors ETH balances and split contract balances.
+
+## Key Integration Pattern
+Periodic balance monitoring (12s intervals) for both native ETH and split contract balances across multiple Ethereum nodes.
+
+## Important Constraints
+- Allocation values must be between 1 and 999999 (representing 0.0001% to 99.9999%)
+- Balance metrics are tracked per account/node combination for redundancy

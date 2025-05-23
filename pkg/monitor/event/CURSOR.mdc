@@ -1,0 +1,22 @@
+---
+description: Event - Common interface for all monitoring events enabling uniform notification handling
+globs: 
+  - "event.go"
+  - "event_test.go"
+  - "**/event.go"
+  - "**/event_test.go"
+alwaysApply: false
+---
+
+# Event Component
+
+Common interface for all monitoring events enabling uniform notification handling across Safe, Split, and Validator monitors.
+
+## Key Integration Pattern
+- All event types must implement the Event interface with consistent method signatures
+- Support multiple description formats (text, markdown, HTML) for different notification channels
+
+## Important Constraints
+- Keep Event interface minimal - only essential display methods
+- Event implementations should handle format-specific rendering internally
+- Include boolean parameters for controlling monitor/group name display context

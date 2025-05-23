@@ -1,0 +1,19 @@
+---
+description: BeaconChain - Client adapter for beaconcha.in API integration
+globs: 
+  - "*.go"
+  - "**/*_test.go"
+alwaysApply: false
+---
+
+# BeaconChain Component
+
+Client adapter for fetching Ethereum validator data from beaconcha.in API with rate limiting and batch processing.
+
+## Key Integration Pattern
+HTTP client with configurable rate limiting and batch processing to efficiently query validator states while respecting API limits.
+
+## Important Constraints
+- Enforce API rate limits through MaxRequestsPerMinute configuration
+- Use batch requests to minimize API calls (default batch size: 100)
+- Always include proper error handling for API responses and network failures

@@ -1,0 +1,19 @@
+---
+description: Safe Alert - Stateful alert managers for Safe multisig monitoring conditions
+globs: 
+  - "*.go"
+  - "**/*_test.go"
+alwaysApply: false
+---
+
+# Safe Alert Component
+
+Stateful alert managers that track Safe multisig monitoring conditions and prevent duplicate notifications.
+
+## Key Integration Pattern
+Each alert type maintains internal state with mutex protection to ensure thread-safe updates and single-firing alerts for persistent conditions.
+
+## Important Constraints
+- Alert types must implement consistent Update() pattern returning shouldAlert bool
+- State transitions are idempotent - multiple updates with same condition won't re-trigger alerts
+- All alert types use field logger with appropriate context for debugging

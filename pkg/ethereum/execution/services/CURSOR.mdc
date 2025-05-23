@@ -1,0 +1,19 @@
+---
+description: Services - Service abstraction layer for execution client components
+globs: 
+  - "*.go"
+alwaysApply: false
+---
+
+# Services Component
+
+Service abstraction layer providing lifecycle management and client detection for execution layer components.
+
+## Key Integration Pattern
+- Service interface pattern for consistent lifecycle management across execution components
+- Client detection via string matching on node version strings
+- Scheduled metadata refresh with exponential backoff on startup
+
+## Important Constraints
+- Services must implement Start/Stop/Ready/OnReady lifecycle methods
+- Client detection supports Geth, Nethermind, Besu, Erigon, Reth, and EthereumJS

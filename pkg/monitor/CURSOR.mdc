@@ -1,0 +1,19 @@
+---
+description: Monitor - Ethereum monitoring service for 0xSplits, validators, and Safe transactions
+globs: 
+  - "*.go"
+  - "**/*.go"
+alwaysApply: false
+---
+
+# Monitor Component
+
+Ethereum monitoring service that tracks 0xSplits contracts, validators, and Safe transactions with configurable notifications.
+
+## Key Integration Pattern
+Event-driven architecture with pluggable notification sources (Discord, Telegram, Email) and monitoring services (Split, Validator, Safe).
+
+## Important Constraints
+- All services must expose Prometheus metrics for observability
+- Event notifications should be rate-limited to prevent spam
+- Maintain connection pooling for Ethereum nodes to handle high-throughput monitoring

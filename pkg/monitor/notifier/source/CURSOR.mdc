@@ -1,0 +1,19 @@
+---
+description: Source - Notification channel adapter implementations for Discord, Telegram, and Email
+globs: 
+  - "*.go"
+  - "**/*.go"
+alwaysApply: false
+---
+
+# Source Component
+
+Notification channel adapter implementations that handle the actual delivery of monitoring events to external services.
+
+## Key Integration Pattern
+Each source adapter (Discord, Telegram, SES, SMTP) implements the Source interface with channel-specific formatting and delivery logic.
+
+## Important Constraints
+- Configure retry logic with exponential backoff for transient failures
+- Implement rate limiting to respect external service quotas
+- Format event data according to each channel's constraints (e.g., Discord embeds, Telegram markdown)

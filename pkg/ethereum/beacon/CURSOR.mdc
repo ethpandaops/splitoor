@@ -1,0 +1,20 @@
+---
+description: Beacon chain node client wrapper with service orchestration
+globs: 
+  - "*.go"
+  - "services/*.go"
+alwaysApply: false
+---
+
+# Beacon Component
+
+Beacon chain node client wrapper that manages service lifecycle and readiness coordination.
+
+## Key Integration Pattern
+- Wraps ethpandaops/beacon client with custom service orchestration
+- Service-based architecture with dependency management via OnReady callbacks
+- Synchronization state validation before marking node as usable
+
+## Important Constraints
+- Services must be started sequentially with readiness checks
+- Node sync distance must be ≤3 slots and within 64 slots of wallclock

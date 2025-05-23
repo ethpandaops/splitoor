@@ -1,0 +1,19 @@
+---
+description: EOA Controller - Externally Owned Account controller implementation for 0xSplits monitoring
+globs: 
+  - "*.go"
+  - "*_test.go"
+alwaysApply: false
+---
+
+# EOA Controller Component
+
+Externally Owned Account (EOA) controller implementation that monitors Ethereum addresses for balance tracking in 0xSplits groups.
+
+## Key Integration Pattern
+Periodic balance polling (12-second intervals) across healthy Ethereum nodes with concurrent metric collection.
+
+## Important Constraints
+- Balance queries must handle nil responses gracefully and continue with remaining nodes
+- Metrics singleton pattern enforced - register metrics only once via GetMetricsInstance()
+- Address validation required during configuration to prevent runtime failures

@@ -1,0 +1,20 @@
+---
+description: Beacon services - Service lifecycle management and metadata coordination for beacon nodes
+globs: 
+  - "*.go"
+alwaysApply: false
+---
+
+# Beacon Services Component
+
+Service lifecycle management and metadata coordination for beacon nodes.
+
+## Key Integration Pattern
+- Service interface pattern with Start/Stop/Ready/OnReady lifecycle hooks
+- Metadata service manages beacon node specs, genesis info, and wallclock synchronization
+- Client detection via node version string parsing
+
+## Important Constraints
+- Services must handle beacon node health transitions gracefully with retry logic
+- Metadata refresh must use exponential backoff during initialization
+- Thread-safe wallclock access required (use mutex protection)

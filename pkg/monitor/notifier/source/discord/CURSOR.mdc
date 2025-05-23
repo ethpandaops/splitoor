@@ -1,0 +1,18 @@
+---
+description: Discord - Webhook-based notification adapter for Discord channels
+globs: 
+  - "*.go"
+  - "*_test.go"
+alwaysApply: false
+---
+
+# Discord Component
+
+Discord webhook adapter that formats monitoring events as rich embeds for channel notifications.
+
+## Key Integration Pattern
+Implements Source interface with Discord-specific embed formatting and webhook delivery via standard HTTP client.
+
+## Important Constraints
+- Format events as Discord embeds with color coding (red for alerts)
+- Handle webhook rate limits with appropriate error types for metrics tracking
