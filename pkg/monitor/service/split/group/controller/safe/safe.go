@@ -211,19 +211,29 @@ func (c *Safe) getQueuedTransactions(ctx context.Context) (*TransactionData, err
 	}
 
 	// Process transactions to find valid recovery transactions
-	c.processTransactions(ctx, txData)
+	if err := c.processTransactions(ctx, txData); err != nil {
+		c.log.WithError(err).Error("failed to process transactions")
+	}
 
 	return txData, nil
 }
 
 // processTransactions examines each transaction to identify recovery transactions
-func (c *Safe) processTransactions(ctx context.Context, txData *TransactionData) {
+func (c *Safe) processTransactions(ctx context.Context, txData *TransactionData) error {
 	for i, tx := range txData.Transactions {
 		txDetails, err := c.safeClient.GetTransaction(ctx, c.address, tx.Transaction.ID)
 		if err != nil {
 			c.log.WithError(err).Error("failed to get recovery transaction details")
 
-			return
+			return err
+		}
+
+		if txDetails == nil {
+			c.log.WithFields(logrus.Fields{
+				"tx_id": tx.Transaction.ID,
+			}).Warn("failed to get recovery transaction details")
+
+			return fmt.Errorf("failed to get recovery transaction details")
 		}
 
 		if !c.isValidRecoveryTransaction(tx.Transaction.ID, txDetails) {
@@ -252,6 +262,8 @@ func (c *Safe) processTransactions(ctx context.Context, txData *TransactionData)
 			txData.RequiredConfirmations = txDetails.DetailedExecutionInfo.ConfirmationsRequired
 		}
 	}
+
+	return nil
 }
 
 // isValidRecoveryTransaction checks if a transaction is a valid recovery transaction
