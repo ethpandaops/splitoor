@@ -213,6 +213,8 @@ func (c *Safe) getQueuedTransactions(ctx context.Context) (*TransactionData, err
 	// Process transactions to find valid recovery transactions
 	if err := c.processTransactions(ctx, txData); err != nil {
 		c.log.WithError(err).Error("failed to process transactions")
+
+		return nil, err
 	}
 
 	return txData, nil
