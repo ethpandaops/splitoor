@@ -264,11 +264,12 @@ func (g *Group) getValidatorsBeaconchain(ctx context.Context, validators []strin
 			}
 		}
 
-		for _, pubkey := range g.pubkeys {
-			if !foundPubkeys[pubkey.String()] {
-				g.log.WithField("pubkey", pubkey.String()).WithField("source", "beaconcha.in").Warn("Validator not found")
+		// Check only the validators we requested in this chunk
+		for _, requestedPubkey := range validators {
+			if !foundPubkeys[requestedPubkey] {
+				g.log.WithField("pubkey", requestedPubkey).WithField("source", "beaconcha.in").Warn("Validator not found")
 
-				g.metrics.UpdateStatus(MetricsStatusUnknown, []string{g.name, pubkey.String(), "beaconcha.in"})
+				g.metrics.UpdateStatus(MetricsStatusUnknown, []string{g.name, requestedPubkey, "beaconcha.in"})
 			}
 		}
 	}
