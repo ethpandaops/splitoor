@@ -30,6 +30,7 @@ type Client interface {
 type client struct {
 	log     logrus.FieldLogger
 	baseURL string
+	apiKey  string
 	client  *http.Client
 	metrics *Metrics
 
@@ -42,6 +43,7 @@ func NewClient(ctx context.Context, log logrus.FieldLogger, monitor string, conf
 	return &client{
 		log:     log.WithField("module", "safe"),
 		baseURL: conf.Endpoint,
+		apiKey:  conf.APIKey,
 		client:  &http.Client{},
 		metrics: GetMetricsInstance("splitoor_safe", monitor),
 	}, nil
@@ -79,6 +81,10 @@ func (c *client) GetQueuedTransactions(ctx context.Context, safeAddress string) 
 	}
 
 	req.Header.Set("User-Agent", userAgent)
+
+	if c.apiKey != "" {
+		req.Header.Set("Authorization", "Bearer "+c.apiKey)
+	}
 
 	resp, err := c.client.Do(req)
 	if err != nil {
@@ -128,6 +134,10 @@ func (c *client) GetTransaction(ctx context.Context, safeAddress, safeTxHash str
 
 	req.Header.Set("User-Agent", userAgent)
 
+	if c.apiKey != "" {
+		req.Header.Set("Authorization", "Bearer "+c.apiKey)
+	}
+
 	resp, err := c.client.Do(req)
 	if err != nil {
 		c.metrics.ObserveResponse("GET", c.baseURL, path, "error", cid, safeAddress, time.Since(start))
@@ -175,6 +185,10 @@ func (c *client) GetSafe(ctx context.Context, safeAddress string) (*SafeResponse
 	}
 
 	req.Header.Set("User-Agent", userAgent)
+
+	if c.apiKey != "" {
+		req.Header.Set("Authorization", "Bearer "+c.apiKey)
+	}
 
 	resp, err := c.client.Do(req)
 	if err != nil {
