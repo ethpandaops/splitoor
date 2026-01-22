@@ -5,6 +5,7 @@ import "fmt"
 type Config struct {
 	Enabled  bool   `yaml:"enabled" default:"true"`
 	Endpoint string `yaml:"endpoint" default:"https://safe-client.safe.global"`
+	APIKey   string `yaml:"apiKey"`
 }
 
 func (c *Config) Validate() error {
