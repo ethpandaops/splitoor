@@ -12,6 +12,9 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
+// userAgent is required to bypass Safe API's CloudFront user-agent filtering.
+const userAgent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36"
+
 // Client exposes Safe API client
 type Client interface {
 	// GetQueuedTransactions returns queued transactions for a safe
@@ -75,6 +78,8 @@ func (c *client) GetQueuedTransactions(ctx context.Context, safeAddress string) 
 		return nil, fmt.Errorf("failed to create request: %w", err)
 	}
 
+	req.Header.Set("User-Agent", userAgent)
+
 	resp, err := c.client.Do(req)
 	if err != nil {
 		c.metrics.ObserveResponse("GET", c.baseURL, path, "error", cid, safeAddress, time.Since(start))
@@ -121,6 +126,8 @@ func (c *client) GetTransaction(ctx context.Context, safeAddress, safeTxHash str
 		return nil, fmt.Errorf("failed to create request: %w", err)
 	}
 
+	req.Header.Set("User-Agent", userAgent)
+
 	resp, err := c.client.Do(req)
 	if err != nil {
 		c.metrics.ObserveResponse("GET", c.baseURL, path, "error", cid, safeAddress, time.Since(start))
@@ -166,6 +173,8 @@ func (c *client) GetSafe(ctx context.Context, safeAddress string) (*SafeResponse
 	if err != nil {
 		return nil, fmt.Errorf("failed to create request: %w", err)
 	}
+
+	req.Header.Set("User-Agent", userAgent)
 
 	resp, err := c.client.Do(req)
 	if err != nil {
