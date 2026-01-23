@@ -68,7 +68,6 @@ func loadMonitorConfigFromFile(file string) (*m.Config, error) {
 	}
 
 	yamlFile, err := os.ReadFile(file)
-
 	if err != nil {
 		return nil, err
 	}

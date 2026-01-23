@@ -13,7 +13,7 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-// Test the pool's behavior with nil maps and nodes
+// Test the pool's behavior with nil maps and nodes.
 func TestPoolSafety(t *testing.T) {
 	log := logrus.New()
 	log.SetLevel(logrus.DebugLevel)
@@ -86,7 +86,7 @@ func TestPoolSafety(t *testing.T) {
 	}
 }
 
-// Test concurrent access to the pool
+// Test concurrent access to the pool.
 func TestPoolConcurrentAccess(t *testing.T) {
 	log := logrus.New()
 	log.SetLevel(logrus.DebugLevel)
@@ -114,6 +114,7 @@ func TestPoolConcurrentAccess(t *testing.T) {
 
 	// Create a context with timeout
 	ctx := context.Background()
+
 	ctxWithTimeout, cancel := context.WithTimeout(ctx, 500*time.Millisecond)
 	defer cancel()
 
@@ -124,33 +125,39 @@ func TestPoolConcurrentAccess(t *testing.T) {
 		// Test reader methods
 		go func() {
 			defer wg.Done()
+
 			_ = p.GetHealthyExecutionNodes()
 		}()
 
 		go func() {
 			defer wg.Done()
+
 			_ = p.GetHealthyBeaconNodes()
 		}()
 
 		go func() {
 			defer wg.Done()
+
 			_ = p.GetHealthyExecutionNode()
 		}()
 
 		go func() {
 			defer wg.Done()
+
 			_ = p.GetHealthyBeaconNode()
 		}()
 
 		// Test writer method with read lock contention
 		go func() {
 			defer wg.Done()
+
 			p.UpdateNodeMetrics()
 		}()
 	}
 
 	// Wait with timeout to ensure the test doesn't hang
 	done := make(chan struct{})
+
 	go func() {
 		wg.Wait()
 		close(done)
@@ -165,7 +172,7 @@ func TestPoolConcurrentAccess(t *testing.T) {
 	}
 }
 
-// Test that context cancellation is handled properly
+// Test that context cancellation is handled properly.
 func TestPoolContextCancellation(t *testing.T) {
 	log := logrus.New()
 	log.SetLevel(logrus.DebugLevel)

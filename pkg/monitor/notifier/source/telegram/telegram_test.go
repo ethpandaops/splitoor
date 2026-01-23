@@ -67,6 +67,7 @@ type MockBot struct {
 func (m *MockBot) SendMessage(ctx context.Context, params *bot.SendMessageParams) (*models.Message, error) {
 	args := m.Called(ctx, params)
 
+	//nolint:errcheck // Test mock - type assertion is safe as we control the mock setup
 	return args.Get(0).(*models.Message), args.Error(1)
 }
 

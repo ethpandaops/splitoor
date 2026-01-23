@@ -1,6 +1,6 @@
 package beaconchain
 
-// Status response constants
+// Status response constants.
 const (
 	StatusOK = "OK"
 )

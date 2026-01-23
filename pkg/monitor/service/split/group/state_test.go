@@ -8,7 +8,7 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-// Test for deadlock prevention in the Merge method
+// Test for deadlock prevention in the Merge method.
 func TestState_Merge_DeadlockPrevention(t *testing.T) {
 	log := logrus.New()
 	log.SetOutput(logrus.StandardLogger().Out)
@@ -30,11 +30,13 @@ func TestState_Merge_DeadlockPrevention(t *testing.T) {
 	// This would deadlock without the fix we implemented
 	go func() {
 		defer wg.Done()
+
 		stateA.Merge(stateB)
 	}()
 
 	go func() {
 		defer wg.Done()
+
 		stateB.Merge(stateA)
 	}()
 

@@ -26,7 +26,7 @@ func TestGetRequest(t *testing.T) {
 		}
 
 		// Return a simple response
-		w.Write([]byte(`{"status":"OK","data":{}}`))
+		_, _ = w.Write([]byte(`{"status":"OK","data":{}}`))
 	}))
 	defer server.Close()
 
@@ -80,13 +80,15 @@ func TestGetRequestErrors(t *testing.T) {
 	// Create a server that times out
 	server = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		time.Sleep(100 * time.Millisecond)
-		w.Write([]byte(`{"status":"OK","data":{}}`))
+
+		_, _ = w.Write([]byte(`{"status":"OK","data":{}}`))
 	}))
 	defer server.Close()
 
 	// Set a short timeout and test timeout error
 	ctx, cancel := context.WithTimeout(context.Background(), 1*time.Nanosecond)
 	defer cancel()
+
 	_, err = client.get(ctx, "test", server.URL)
 	assert.Error(t, err)
 }
@@ -111,7 +113,7 @@ func TestGetValidatorsRequest(t *testing.T) {
 				Status: "OK",
 				Data:   validatorData,
 			}
-			json.NewEncoder(w).Encode(resp)
+			_ = json.NewEncoder(w).Encode(resp)
 		} else {
 			w.WriteHeader(http.StatusBadRequest)
 		}
@@ -148,7 +150,7 @@ func TestGetValidatorsSingleResponse(t *testing.T) {
 				Status: "active",
 			},
 		}
-		json.NewEncoder(w).Encode(resp)
+		_ = json.NewEncoder(w).Encode(resp)
 	}))
 	defer server.Close()
 
@@ -177,7 +179,7 @@ func TestGetValidatorsErrorResponse(t *testing.T) {
 			Status: "ERROR",
 			Data:   nil,
 		}
-		json.NewEncoder(w).Encode(resp)
+		_ = json.NewEncoder(w).Encode(resp)
 	}))
 	defer server.Close()
 
@@ -209,7 +211,7 @@ func TestGetValidatorRequest(t *testing.T) {
 					Status: "active",
 				},
 			}
-			json.NewEncoder(w).Encode(resp)
+			_ = json.NewEncoder(w).Encode(resp)
 		} else {
 			w.WriteHeader(http.StatusBadRequest)
 		}
@@ -236,7 +238,7 @@ func TestGetValidatorRequest(t *testing.T) {
 func TestGetValidatorRequestInvalidJSON(t *testing.T) {
 	// Create a test server that returns invalid JSON
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Write([]byte(`{"status":"OK","data":invalid}`))
+		_, _ = w.Write([]byte(`{"status":"OK","data":invalid}`))
 	}))
 	defer server.Close()
 

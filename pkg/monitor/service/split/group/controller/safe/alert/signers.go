@@ -21,7 +21,7 @@ func NewSigners(log logrus.FieldLogger) *Signers {
 	}
 }
 
-// Update returns true if an alert should be triggered
+// Update returns true if an alert should be triggered.
 func (a *Signers) Update(mismatch bool) (shouldAlert bool) {
 	a.mu.Lock()
 	defer a.mu.Unlock()

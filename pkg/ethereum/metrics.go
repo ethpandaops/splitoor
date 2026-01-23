@@ -18,7 +18,7 @@ var (
 
 // GetMetricsInstance returns a metrics instance for the given namespace and monitor
 // For production use, this will return a singleton for each namespace+monitor combination
-// For testing, include a unique suffix in the namespace to avoid collisions
+// For testing, include a unique suffix in the namespace to avoid collisions.
 func GetMetricsInstance(namespace, monitor string) *Metrics {
 	key := fmt.Sprintf("%s-%s", namespace, monitor)
 

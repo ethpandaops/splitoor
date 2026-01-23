@@ -30,7 +30,7 @@ const (
 //   - exiting_offline
 //   - slashing_offline
 //
-// offline could be supported by checking the last 3 epochs
+// Offline could be supported by checking the last 3 epochs.
 func BeaconAPIToMetricsStatus(status v1.ValidatorState, slashed bool) MetricsStatus {
 	switch status {
 	case v1.ValidatorStatePendingInitialized:

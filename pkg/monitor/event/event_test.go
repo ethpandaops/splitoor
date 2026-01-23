@@ -11,7 +11,7 @@ import (
 	"github.com/ethpandaops/splitoor/pkg/monitor/event"
 )
 
-// MockEvent implements Event interface for testing
+// MockEvent implements Event interface for testing.
 type MockEvent struct {
 	monitor     string
 	eventType   string
@@ -159,7 +159,7 @@ func TestEventInterface(t *testing.T) {
 	}
 }
 
-// TestEventComparison tests comparing different events
+// TestEventComparison tests comparing different events.
 func TestEventComparison(t *testing.T) {
 	baseEvent := NewMockEvent("monitor", "type", "title", "desc", "group")
 
@@ -222,7 +222,7 @@ func TestEventComparison(t *testing.T) {
 	}
 }
 
-// TestEventValidation tests validation of event fields
+// TestEventValidation tests validation of event fields.
 func TestEventValidation(t *testing.T) {
 	tests := []struct {
 		name       string
