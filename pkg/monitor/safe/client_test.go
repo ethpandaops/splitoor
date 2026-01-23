@@ -527,3 +527,104 @@ func TestClient_AuthorizationHeader(t *testing.T) {
 	_, err = c.GetQueuedTransactions(context.Background(), "0x123")
 	require.NoError(t, err)
 }
+
+func TestClient_RateLimitRetry(t *testing.T) {
+	var requestCount int
+
+	var mu sync.Mutex
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		mu.Lock()
+		defer mu.Unlock()
+
+		requestCount++
+
+		count := requestCount
+
+		if count == 1 {
+			// First request returns 429 with Retry-After header
+			w.Header().Set("Retry-After", "1")
+			w.WriteHeader(http.StatusTooManyRequests)
+
+			return
+		}
+
+		// Second request succeeds
+		w.WriteHeader(http.StatusOK)
+
+		err := json.NewEncoder(w).Encode(&safe.MultisigTransactionsResponse{
+			Count:   1,
+			Results: []safe.MultisigTransaction{{SafeTxHash: "0xabc"}},
+		})
+		require.NoError(t, err)
+	}))
+	defer server.Close()
+
+	c, err := safe.NewClient(context.Background(), logrus.New(), "test", &safe.Config{
+		Endpoint: server.URL,
+		APIKey:   "test-key",
+	})
+	require.NoError(t, err)
+
+	c.SetChain("eth")
+
+	resp, err := c.GetQueuedTransactions(context.Background(), "0x123")
+	require.NoError(t, err)
+	assert.Equal(t, 1, resp.Count)
+	assert.Equal(t, "0xabc", resp.Results[0].SafeTxHash)
+
+	mu.Lock()
+	assert.Equal(t, 2, requestCount, "expected exactly 2 requests (initial + retry)")
+	mu.Unlock()
+}
+
+func TestClient_RateLimitRetry_ContextCancellation(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// Always return 429 with long delay
+		w.Header().Set("Retry-After", "60")
+		w.WriteHeader(http.StatusTooManyRequests)
+	}))
+	defer server.Close()
+
+	c, err := safe.NewClient(context.Background(), logrus.New(), "test", &safe.Config{
+		Endpoint: server.URL,
+		APIKey:   "test-key",
+	})
+	require.NoError(t, err)
+
+	c.SetChain("eth")
+
+	ctx, cancel := context.WithTimeout(context.Background(), 100*time.Millisecond)
+	defer cancel()
+
+	_, err = c.GetQueuedTransactions(ctx, "0x123")
+	assert.Error(t, err)
+	assert.ErrorIs(t, err, context.DeadlineExceeded)
+}
+
+func TestClient_RateLimitRetry_DefaultDelay(t *testing.T) {
+	// This test verifies that the default 5s delay is used when no Retry-After header is present.
+	// We do this by setting a context timeout shorter than 5s and verifying the request times out.
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// Return 429 without Retry-After header - should use default 5s delay
+		w.WriteHeader(http.StatusTooManyRequests)
+	}))
+	defer server.Close()
+
+	c, err := safe.NewClient(context.Background(), logrus.New(), "test", &safe.Config{
+		Endpoint: server.URL,
+		APIKey:   "test-key",
+	})
+	require.NoError(t, err)
+
+	c.SetChain("eth")
+
+	// Use a context with timeout shorter than the default 5s delay
+	// This should fail because the default delay exceeds our timeout
+	ctx, cancel := context.WithTimeout(context.Background(), 500*time.Millisecond)
+	defer cancel()
+
+	_, err = c.GetQueuedTransactions(ctx, "0x123")
+	assert.Error(t, err)
+	assert.ErrorIs(t, err, context.DeadlineExceeded)
+}
