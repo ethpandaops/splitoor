@@ -1,8 +1,6 @@
 module github.com/ethpandaops/splitoor
 
-go 1.24
-
-toolchain go1.24.3
+go 1.25.1
 
 replace github.com/attestantio/go-eth2-client => github.com/attestantio/go-eth2-client v0.26.1-0.20250721122214-dc2928832acc
 
@@ -24,6 +22,7 @@ require (
 	github.com/spf13/cobra v1.8.1
 	github.com/stretchr/testify v1.10.0
 	golang.org/x/sync v0.12.0
+	golang.org/x/time v0.14.0
 	gopkg.in/yaml.v2 v2.4.0
 )
 

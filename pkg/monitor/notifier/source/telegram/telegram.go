@@ -87,6 +87,7 @@ func (t *Telegram) GetConfig() *Config {
 
 func (t *Telegram) Publish(ctx context.Context, e event.Event) error {
 	var errorType string
+
 	defer func() {
 		if errorType != "" {
 			t.metrics.IncErrors(e.GetGroup(), t.name, t.GetType(), errorType)
@@ -146,7 +147,6 @@ func (t *Telegram) Publish(ctx context.Context, e event.Event) error {
 	}
 
 	_, err = t.client.SendMessage(ctx, params)
-
 	if err != nil {
 		errorType = "send_message"
 

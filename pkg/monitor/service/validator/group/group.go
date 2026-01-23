@@ -124,6 +124,7 @@ func (g *Group) tick(ctx context.Context) {
 
 		go func() {
 			defer wg.Done()
+
 			g.checkBeaconchain(ctx, newState)
 		}()
 	}
@@ -133,6 +134,7 @@ func (g *Group) tick(ctx context.Context) {
 
 		go func() {
 			defer wg.Done()
+
 			g.checkBeaconAPI(ctx, newState)
 		}()
 	}

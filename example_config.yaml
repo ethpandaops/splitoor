@@ -28,7 +28,8 @@ beaconchain:
 # connects to safe to get tx status
 safe:
   enabled: true
-  endpoint: "https://safe-client.safe.global"
+  endpoint: "https://api.safe.global"
+  apiKey: "your-safe-api-key" # required - get from https://safe.global/
 
 services:
   split:

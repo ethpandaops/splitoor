@@ -17,12 +17,13 @@ import (
 	"github.com/ethpandaops/splitoor/pkg/monitor/safe"
 )
 
-// Setup test client helper
+// Setup test client helper.
 func setupTestClient(t *testing.T, server *httptest.Server) safe.Client {
 	t.Helper()
 
 	c, err := safe.NewClient(context.Background(), logrus.New(), "test", &safe.Config{
 		Endpoint: server.URL,
+		APIKey:   "test-api-key",
 	})
 	require.NoError(t, err)
 
@@ -32,50 +33,46 @@ func setupTestClient(t *testing.T, server *httptest.Server) safe.Client {
 func TestClient_GetQueuedTransactions(t *testing.T) {
 	tests := []struct {
 		name           string
-		chainID        string
+		chain          string
 		safeAddress    string
-		serverResponse *safe.QueuedTransactionsResponse
+		serverResponse *safe.MultisigTransactionsResponse
 		serverStatus   int
 		wantErr        bool
 	}{
 		{
 			name:        "success empty queue",
-			chainID:     "1",
+			chain:       "eth",
 			safeAddress: "0x123",
-			serverResponse: &safe.QueuedTransactionsResponse{
+			serverResponse: &safe.MultisigTransactionsResponse{
 				Count:    0,
 				Next:     nil,
 				Previous: nil,
-				Results:  []safe.QueuedTransactionResult{},
+				Results:  []safe.MultisigTransaction{},
 			},
 			serverStatus: http.StatusOK,
 			wantErr:      false,
 		},
 		{
 			name:        "success with transactions",
-			chainID:     "1",
+			chain:       "eth",
 			safeAddress: "0x123",
-			serverResponse: &safe.QueuedTransactionsResponse{
+			serverResponse: &safe.MultisigTransactionsResponse{
 				Count: 1,
-				Results: []safe.QueuedTransactionResult{
+				Results: []safe.MultisigTransaction{
 					{
-						Type: "TRANSACTION",
-						Transaction: &safe.Transaction{
-							ID:       "123",
-							TxStatus: "PENDING",
-							TxInfo: safe.TransactionInfo{
-								Type: "TRANSFER",
-								Sender: safe.AddressInfo{
-									Value: "0x123",
-								},
-								Recipient: safe.AddressInfo{
-									Value: "0x456",
-								},
-							},
-							ExecutionInfo: safe.ExecutionInfo{
-								Nonce:                  1,
-								ConfirmationsRequired:  2,
-								ConfirmationsSubmitted: 1,
+						Safe:                  "0x123",
+						To:                    "0x456",
+						Value:                 "1000000000000000000",
+						SafeTxHash:            "0xabc123",
+						Nonce:                 1,
+						SubmissionDate:        "2024-01-01T00:00:00Z",
+						IsExecuted:            false,
+						ConfirmationsRequired: 2,
+						Confirmations: []safe.Confirmation{
+							{
+								Owner:          "0x789",
+								SubmissionDate: "2024-01-01T00:00:00Z",
+								SignatureType:  "EOA",
 							},
 						},
 					},
@@ -85,14 +82,14 @@ func TestClient_GetQueuedTransactions(t *testing.T) {
 			wantErr:      false,
 		},
 		{
-			name:         "missing chain ID",
+			name:         "missing chain",
 			safeAddress:  "0x123",
 			serverStatus: http.StatusOK,
 			wantErr:      true,
 		},
 		{
 			name:         "server error",
-			chainID:      "1",
+			chain:        "eth",
 			safeAddress:  "0x123",
 			serverStatus: http.StatusInternalServerError,
 			wantErr:      true,
@@ -113,11 +110,12 @@ func TestClient_GetQueuedTransactions(t *testing.T) {
 
 			c, err := safe.NewClient(context.Background(), logrus.New(), "test", &safe.Config{
 				Endpoint: server.URL,
+				APIKey:   "test-api-key",
 			})
 			require.NoError(t, err)
 
-			if tt.chainID != "" {
-				c.SetChainID(tt.chainID)
+			if tt.chain != "" {
+				c.SetChain(tt.chain)
 			}
 
 			resp, err := c.GetQueuedTransactions(context.Background(), tt.safeAddress)
@@ -131,7 +129,7 @@ func TestClient_GetQueuedTransactions(t *testing.T) {
 			assert.Equal(t, tt.serverResponse.Count, resp.Count)
 
 			if len(tt.serverResponse.Results) > 0 {
-				assert.Equal(t, tt.serverResponse.Results[0].Transaction.ID, resp.Results[0].Transaction.ID)
+				assert.Equal(t, tt.serverResponse.Results[0].SafeTxHash, resp.Results[0].SafeTxHash)
 			}
 		})
 	}
@@ -140,53 +138,46 @@ func TestClient_GetQueuedTransactions(t *testing.T) {
 func TestClient_GetTransaction(t *testing.T) {
 	tests := []struct {
 		name           string
-		chainID        string
-		safeAddress    string
+		chain          string
 		safeTxHash     string
-		serverResponse *safe.TransactionDetails
+		serverResponse *safe.MultisigTransaction
 		serverStatus   int
 		wantErr        bool
 	}{
 		{
-			name:        "success",
-			chainID:     "1",
-			safeAddress: "0x123",
-			safeTxHash:  "0x123",
-			serverResponse: &safe.TransactionDetails{
-				SafeAddress: "0x123",
-				TxID:        "123",
-				TxStatus:    "SUCCESS",
-				TxInfo: safe.TransactionInfo{
-					Type: "TRANSFER",
-					Sender: safe.AddressInfo{
-						Value: "0x123",
+			name:       "success",
+			chain:      "eth",
+			safeTxHash: "0xabc123",
+			serverResponse: &safe.MultisigTransaction{
+				Safe:                  "0x123",
+				To:                    "0x456",
+				Value:                 "1000000000000000000",
+				SafeTxHash:            "0xabc123",
+				Nonce:                 1,
+				SubmissionDate:        "2024-01-01T00:00:00Z",
+				IsExecuted:            false,
+				ConfirmationsRequired: 2,
+				Confirmations: []safe.Confirmation{
+					{
+						Owner:          "0x789",
+						SubmissionDate: "2024-01-01T00:00:00Z",
+						SignatureType:  "EOA",
 					},
-					Recipient: safe.AddressInfo{
-						Value: "0x456",
-					},
-				},
-				DetailedExecutionInfo: safe.DetailedExecutionInfo{
-					Type:                  "MULTISIG",
-					Nonce:                 1,
-					SafeTxHash:            "0x123",
-					ConfirmationsRequired: 2,
 				},
 			},
 			serverStatus: http.StatusOK,
 			wantErr:      false,
 		},
 		{
-			name:         "missing chain ID",
-			safeAddress:  "0x123",
-			safeTxHash:   "0x123",
+			name:         "missing chain",
+			safeTxHash:   "0xabc123",
 			serverStatus: http.StatusOK,
 			wantErr:      true,
 		},
 		{
 			name:         "server error",
-			chainID:      "1",
-			safeAddress:  "0x123",
-			safeTxHash:   "0x123",
+			chain:        "eth",
+			safeTxHash:   "0xabc123",
 			serverStatus: http.StatusInternalServerError,
 			wantErr:      true,
 		},
@@ -206,14 +197,15 @@ func TestClient_GetTransaction(t *testing.T) {
 
 			c, err := safe.NewClient(context.Background(), logrus.New(), "test", &safe.Config{
 				Endpoint: server.URL,
+				APIKey:   "test-api-key",
 			})
 			require.NoError(t, err)
 
-			if tt.chainID != "" {
-				c.SetChainID(tt.chainID)
+			if tt.chain != "" {
+				c.SetChain(tt.chain)
 			}
 
-			tx, err := c.GetTransaction(context.Background(), tt.safeAddress, tt.safeTxHash)
+			tx, err := c.GetTransaction(context.Background(), tt.safeTxHash)
 			if tt.wantErr {
 				assert.Error(t, err)
 
@@ -221,27 +213,30 @@ func TestClient_GetTransaction(t *testing.T) {
 			}
 
 			require.NoError(t, err)
-			assert.Equal(t, tt.serverResponse.TxID, tx.TxID)
-			assert.Equal(t, tt.serverResponse.SafeAddress, tx.SafeAddress)
-			assert.Equal(t, tt.serverResponse.TxStatus, tx.TxStatus)
+			assert.Equal(t, tt.serverResponse.SafeTxHash, tx.SafeTxHash)
+			assert.Equal(t, tt.serverResponse.Safe, tx.Safe)
+			assert.Equal(t, tt.serverResponse.IsExecuted, tx.IsExecuted)
 		})
 	}
 }
 
-func TestClient_SetChainID(t *testing.T) {
+func TestClient_SetChain(t *testing.T) {
 	c, err := safe.NewClient(context.Background(), logrus.New(), "test", &safe.Config{
 		Endpoint: "http://localhost:1234", // Use non-routable address to fail fast
+		APIKey:   "test-api-key",
 	})
 	require.NoError(t, err)
 
-	// Test concurrent chain ID updates
+	// Test concurrent chain updates
 	var wg sync.WaitGroup
+
 	for i := 0; i < 10; i++ {
 		wg.Add(1)
 
 		fn := func(id int) {
 			defer wg.Done()
-			c.SetChainID(fmt.Sprintf("%d", id))
+
+			c.SetChain(fmt.Sprintf("chain%d", id))
 		}
 
 		go fn(i)
@@ -250,7 +245,7 @@ func TestClient_SetChainID(t *testing.T) {
 	wg.Wait()
 
 	// Verify we can still make requests after concurrent updates
-	c.SetChainID("1")
+	c.SetChain("eth")
 
 	ctx, cancel := context.WithTimeout(context.Background(), 100*time.Millisecond)
 	defer cancel()
@@ -260,24 +255,26 @@ func TestClient_SetChainID(t *testing.T) {
 }
 
 func TestClient_URLConstruction(t *testing.T) {
-	chainID := "1"
+	chain := "eth"
 	safeAddress := "0x123"
 
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		expectedPath := fmt.Sprintf("/v1/chains/%s/safes/%s/transactions/queued", chainID, safeAddress)
+		expectedPath := fmt.Sprintf("/tx-service/%s/api/v1/safes/%s/multisig-transactions/", chain, safeAddress)
 		assert.Equal(t, expectedPath, r.URL.Path)
+		assert.Equal(t, "executed=false", r.URL.RawQuery)
 
-		err := json.NewEncoder(w).Encode(&safe.QueuedTransactionsResponse{})
+		err := json.NewEncoder(w).Encode(&safe.MultisigTransactionsResponse{})
 		require.NoError(t, err)
 	}))
 	defer server.Close()
 
 	c, err := safe.NewClient(context.Background(), logrus.New(), "test", &safe.Config{
 		Endpoint: server.URL,
+		APIKey:   "test-api-key",
 	})
 	require.NoError(t, err)
 
-	c.SetChainID(chainID)
+	c.SetChain(chain)
 	_, err = c.GetQueuedTransactions(context.Background(), safeAddress)
 	require.NoError(t, err)
 }
@@ -285,21 +282,21 @@ func TestClient_URLConstruction(t *testing.T) {
 func TestClient_RequestMetrics(t *testing.T) {
 	tests := []struct {
 		name        string
-		chainID     string
+		chain       string
 		path        string
 		statusCode  int
 		shouldError bool
 	}{
 		{
 			name:       "success request",
-			chainID:    "1",
-			path:       "/v1/chains/1/safes/0x123/transactions/queued",
+			chain:      "eth",
+			path:       "/tx-service/eth/api/v1/safes/0x123/multisig-transactions/",
 			statusCode: http.StatusOK,
 		},
 		{
 			name:        "error request",
-			chainID:     "1",
-			path:        "/v1/chains/1/safes/0x123/transactions/queued",
+			chain:       "eth",
+			path:        "/tx-service/eth/api/v1/safes/0x123/multisig-transactions/",
 			statusCode:  http.StatusInternalServerError,
 			shouldError: true,
 		},
@@ -310,13 +307,13 @@ func TestClient_RequestMetrics(t *testing.T) {
 			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				assert.Equal(t, tt.path, r.URL.Path)
 				w.WriteHeader(tt.statusCode)
-				err := json.NewEncoder(w).Encode(&safe.QueuedTransactionsResponse{})
+				err := json.NewEncoder(w).Encode(&safe.MultisigTransactionsResponse{})
 				require.NoError(t, err)
 			}))
 			defer server.Close()
 
 			c := setupTestClient(t, server)
-			c.SetChainID(tt.chainID)
+			c.SetChain(tt.chain)
 
 			_, err := c.GetQueuedTransactions(context.Background(), "0x123")
 			if tt.shouldError {
@@ -327,6 +324,7 @@ func TestClient_RequestMetrics(t *testing.T) {
 		})
 	}
 }
+
 func TestClient_InvalidResponses(t *testing.T) {
 	tests := []struct {
 		name     string
@@ -361,7 +359,7 @@ func TestClient_InvalidResponses(t *testing.T) {
 			defer server.Close()
 
 			c := setupTestClient(t, server)
-			c.SetChainID("1")
+			c.SetChain("eth")
 
 			_, err := c.GetQueuedTransactions(context.Background(), "0x123")
 			if tt.wantErr {
@@ -382,7 +380,7 @@ func TestClient_ContextCancellation(t *testing.T) {
 	defer server.Close()
 
 	c := setupTestClient(t, server)
-	c.SetChainID("1")
+	c.SetChain("eth")
 
 	ctx, cancel := context.WithTimeout(context.Background(), 50*time.Millisecond)
 	defer cancel()
@@ -395,15 +393,16 @@ func TestClient_ContextCancellation(t *testing.T) {
 func TestClient_ParallelRequests(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
-		err := json.NewEncoder(w).Encode(&safe.QueuedTransactionsResponse{})
+		err := json.NewEncoder(w).Encode(&safe.MultisigTransactionsResponse{})
 		require.NoError(t, err)
 	}))
 	defer server.Close()
 
 	c := setupTestClient(t, server)
-	c.SetChainID("1")
+	c.SetChain("eth")
 
 	var wg sync.WaitGroup
+
 	for i := 0; i < 10; i++ {
 		wg.Add(1)
 
@@ -423,7 +422,7 @@ func TestClient_ParallelRequests(t *testing.T) {
 func TestClient_GetSafe(t *testing.T) {
 	tests := []struct {
 		name           string
-		chainID        string
+		chain          string
 		safeAddress    string
 		serverResponse *safe.SafeResponse
 		serverStatus   int
@@ -431,50 +430,35 @@ func TestClient_GetSafe(t *testing.T) {
 	}{
 		{
 			name:        "success",
-			chainID:     "17000",
+			chain:       "eth",
 			safeAddress: "0xc31Fb5899401E804C412B74a5bfFFb2B26222F3d",
 			serverResponse: &safe.SafeResponse{
-				Address: safe.AddressInfo{
-					Value: "0xc31Fb5899401E804C412B74a5bfFFb2B26222F3d",
-				},
-				ChainID:   "17000",
+				Address:   "0xc31Fb5899401E804C412B74a5bfFFb2B26222F3d",
 				Nonce:     3,
 				Threshold: 4,
-				Owners: []safe.AddressInfo{
-					{Value: "0xdead09833B4e3ac912dF77d2eAEf4F117e787811"},
-					{Value: "0xdeadDB4896EB07A28b75B0784CbBed8503A09e22"},
-					{Value: "0xdeadc4752e998B1c04B8a89Dc1F3B07E5aaf1333"},
-					{Value: "0xdeadE2F6Cf6c401B33CDCCF5e2E49d5eEbd24d44"},
-					{Value: "0xdeadd6a5d91C6dEaD25c1092F737918F0c2f5c55"},
-					{Value: "0xdeadCd808F23F138a33F5023a2dD19792bd5F766"},
+				Owners: []string{
+					"0xdead09833B4e3ac912dF77d2eAEf4F117e787811",
+					"0xdeadDB4896EB07A28b75B0784CbBed8503A09e22",
+					"0xdeadc4752e998B1c04B8a89Dc1F3B07E5aaf1333",
+					"0xdeadE2F6Cf6c401B33CDCCF5e2E49d5eEbd24d44",
+					"0xdeadd6a5d91C6dEaD25c1092F737918F0c2f5c55",
+					"0xdeadCd808F23F138a33F5023a2dD19792bd5F766",
 				},
-				Implementation: safe.AddressInfo{
-					Value:   "0x29fcB43b46531BcA003ddC8FCB67FFE91900C762",
-					Name:    stringPtr("SafeL2 1.4.1"),
-					LogoURI: stringPtr("https://assets.holesky-safe.protofire.io/contracts/logos/0x29fcB43b46531BcA003ddC8FCB67FFE91900C762.png"),
-				},
-				ImplementationVersionState: "UP_TO_DATE",
-				TxQueuedTag:                "1738735603",
-				TxHistoryTag:               "1738735572",
-				FallbackHandler: &safe.AddressInfo{
-					Value:   "0xfd0732Dc9E303f09fCEf3a7388Ad10A83459Ec99",
-					Name:    stringPtr("Safe: CompatibilityFallbackHandler 1.4.1"),
-					LogoURI: stringPtr("https://assets.holesky-safe.protofire.io/contracts/logos/0xfd0732Dc9E303f09fCEf3a7388Ad10A83459Ec99.png"),
-				},
-				Version: "1.4.1+L2",
+				MasterCopy:      "0x29fcB43b46531BcA003ddC8FCB67FFE91900C762",
+				FallbackHandler: "0xfd0732Dc9E303f09fCEf3a7388Ad10A83459Ec99",
 			},
 			serverStatus: http.StatusOK,
 			wantErr:      false,
 		},
 		{
-			name:         "missing chain ID",
+			name:         "missing chain",
 			safeAddress:  "0x123",
 			serverStatus: http.StatusOK,
 			wantErr:      true,
 		},
 		{
 			name:         "server error",
-			chainID:      "1",
+			chain:        "eth",
 			safeAddress:  "0x123",
 			serverStatus: http.StatusInternalServerError,
 			wantErr:      true,
@@ -495,11 +479,12 @@ func TestClient_GetSafe(t *testing.T) {
 
 			c, err := safe.NewClient(context.Background(), logrus.New(), "test", &safe.Config{
 				Endpoint: server.URL,
+				APIKey:   "test-api-key",
 			})
 			require.NoError(t, err)
 
-			if tt.chainID != "" {
-				c.SetChainID(tt.chainID)
+			if tt.chain != "" {
+				c.SetChain(tt.chain)
 			}
 
 			resp, err := c.GetSafe(context.Background(), tt.safeAddress)
@@ -510,8 +495,7 @@ func TestClient_GetSafe(t *testing.T) {
 			}
 
 			require.NoError(t, err)
-			assert.Equal(t, tt.serverResponse.Address.Value, resp.Address.Value)
-			assert.Equal(t, tt.serverResponse.ChainID, resp.ChainID)
+			assert.Equal(t, tt.serverResponse.Address, resp.Address)
 			assert.Equal(t, tt.serverResponse.Nonce, resp.Nonce)
 			assert.Equal(t, tt.serverResponse.Threshold, resp.Threshold)
 			assert.Equal(t, len(tt.serverResponse.Owners), len(resp.Owners))
@@ -519,6 +503,27 @@ func TestClient_GetSafe(t *testing.T) {
 	}
 }
 
-func stringPtr(s string) *string {
-	return &s
+func TestClient_AuthorizationHeader(t *testing.T) {
+	apiKey := "test-api-key-12345"
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// Verify authorization header is set
+		authHeader := r.Header.Get("Authorization")
+		assert.Equal(t, "Bearer "+apiKey, authHeader)
+
+		err := json.NewEncoder(w).Encode(&safe.MultisigTransactionsResponse{})
+		require.NoError(t, err)
+	}))
+	defer server.Close()
+
+	c, err := safe.NewClient(context.Background(), logrus.New(), "test", &safe.Config{
+		Endpoint: server.URL,
+		APIKey:   apiKey,
+	})
+	require.NoError(t, err)
+
+	c.SetChain("eth")
+
+	_, err = c.GetQueuedTransactions(context.Background(), "0x123")
+	require.NoError(t, err)
 }

@@ -140,6 +140,7 @@ func (p *Pool) WaitForHealthyBeaconNode(ctx context.Context) (*beacon.Node, erro
 		if node := p.GetHealthyBeaconNode(); node != nil {
 			return node, nil
 		}
+
 		select {
 		case <-ctx.Done():
 			return nil, ctx.Err()
@@ -153,6 +154,7 @@ func (p *Pool) WaitForHealthyExecutionNode(ctx context.Context) (*execution.Node
 		if node := p.GetHealthyExecutionNode(); node != nil {
 			return node, nil
 		}
+
 		select {
 		case <-ctx.Done():
 			return nil, ctx.Err()

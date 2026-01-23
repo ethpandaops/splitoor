@@ -8,7 +8,7 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
-// Client exposes beaconchain client
+// Client exposes beaconchain client.
 type Client interface {
 	// GetValidators returns a map of validators
 	GetValidators(ctx context.Context, pubkeys []string) (map[string]*Validator, error)
@@ -32,7 +32,7 @@ type client struct {
 	metrics              *Metrics
 }
 
-// NewClient creates a new beaconchain instance
+// NewClient creates a new beaconchain instance.
 func NewClient(ctx context.Context, log logrus.FieldLogger, monitor string, conf *Config) (*client, error) {
 	return &client{
 		log:                  log.WithField("module", "beaconchain"),

@@ -120,9 +120,10 @@ func TestClient_GetValidators(t *testing.T) {
 					validator, exists := validators[v.Pubkey]
 					if !exists {
 						t.Errorf("Expected validator with pubkey %s to exist in the result map", v.Pubkey)
+
 						continue
 					}
-					
+
 					// Safely check values
 					if validator != nil {
 						assert.Equal(t, v.Balance, validator.Balance)

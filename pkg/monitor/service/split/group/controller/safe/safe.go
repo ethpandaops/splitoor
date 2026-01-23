@@ -148,7 +148,7 @@ func (c *Safe) tick(ctx context.Context) {
 	c.updateTransactionMetrics(queuedTxData)
 }
 
-// checkSignersAndThreshold verifies signers and threshold match expectations
+// checkSignersAndThreshold verifies signers and threshold match expectations.
 func (c *Safe) checkSignersAndThreshold(ctx context.Context, safeRsp *safe.SafeResponse) {
 	// Check signers
 	signersMatch := safeRsp.CheckSigners(c.signers)
@@ -177,17 +177,17 @@ func (c *Safe) checkSignersAndThreshold(ctx context.Context, safeRsp *safe.SafeR
 	c.metrics.UpdateThresholdValid(boolToFloat64(safeRsp.Threshold == c.threshold), []string{c.name, c.address, c.Type()})
 }
 
-// TransactionData holds information about queued transactions
+// TransactionData holds information about queued transactions.
 type TransactionData struct {
-	Transactions          []*safe.QueuedTransactionResult
-	RecoveryTxID          string
+	Transactions          []*safe.MultisigTransaction
+	RecoveryTxHash        string
 	InvalidRecoveryError  error
 	HasNextRecoveryTx     bool
 	CurrentConfirmations  int
 	RequiredConfirmations int
 }
 
-// getQueuedTransactions fetches and processes queued transactions
+// getQueuedTransactions fetches and processes queued transactions.
 func (c *Safe) getQueuedTransactions(ctx context.Context) (*TransactionData, error) {
 	queued, err := c.safeClient.GetQueuedTransactions(ctx, c.address)
 	if err != nil {
@@ -196,12 +196,10 @@ func (c *Safe) getQueuedTransactions(ctx context.Context) (*TransactionData, err
 		return nil, err
 	}
 
-	var txns []*safe.QueuedTransactionResult
+	txns := make([]*safe.MultisigTransaction, 0, len(queued.Results))
 
-	for _, tx := range queued.Results {
-		if tx.Type == "TRANSACTION" {
-			txns = append(txns, &tx)
-		}
+	for i := range queued.Results {
+		txns = append(txns, &queued.Results[i])
 	}
 
 	c.metrics.UpdateTransactionQueueSize(float64(len(txns)), []string{c.name, c.address, c.Type()})
@@ -220,10 +218,10 @@ func (c *Safe) getQueuedTransactions(ctx context.Context) (*TransactionData, err
 	return txData, nil
 }
 
-// processTransactions examines each transaction to identify recovery transactions
+// processTransactions examines each transaction to identify recovery transactions.
 func (c *Safe) processTransactions(ctx context.Context, txData *TransactionData) error {
 	for i, tx := range txData.Transactions {
-		txDetails, err := c.safeClient.GetTransaction(ctx, c.address, tx.Transaction.ID)
+		txDetails, err := c.safeClient.GetTransaction(ctx, tx.SafeTxHash)
 		if err != nil {
 			c.log.WithError(err).Error("failed to get recovery transaction details")
 
@@ -232,22 +230,22 @@ func (c *Safe) processTransactions(ctx context.Context, txData *TransactionData)
 
 		if txDetails == nil {
 			c.log.WithFields(logrus.Fields{
-				"tx_id": tx.Transaction.ID,
+				"safe_tx_hash": tx.SafeTxHash,
 			}).Warn("failed to get recovery transaction details")
 
 			return fmt.Errorf("failed to get recovery transaction details")
 		}
 
-		if !c.isValidRecoveryTransaction(tx.Transaction.ID, txDetails) {
+		if !c.isValidRecoveryTransaction(tx.SafeTxHash, txDetails) {
 			continue
 		}
 
-		txData.RecoveryTxID = tx.Transaction.ID
+		txData.RecoveryTxHash = tx.SafeTxHash
 		txData.InvalidRecoveryError = nil
 
 		if err := c.checkRecoveryParameters(txDetails); err != nil {
 			c.log.WithFields(logrus.Fields{
-				"tx_id": tx.Transaction.ID,
+				"safe_tx_hash": tx.SafeTxHash,
 			}).WithError(err).Warn("invalid recovery transaction queued")
 
 			txData.InvalidRecoveryError = err
@@ -260,48 +258,48 @@ func (c *Safe) processTransactions(ctx context.Context, txData *TransactionData)
 		}
 
 		if txData.RequiredConfirmations == 0 {
-			txData.CurrentConfirmations = len(txDetails.DetailedExecutionInfo.Confirmations)
-			txData.RequiredConfirmations = txDetails.DetailedExecutionInfo.ConfirmationsRequired
+			txData.CurrentConfirmations = len(txDetails.Confirmations)
+			txData.RequiredConfirmations = txDetails.ConfirmationsRequired
 		}
 	}
 
 	return nil
 }
 
-// isValidRecoveryTransaction checks if a transaction is a valid recovery transaction
-func (c *Safe) isValidRecoveryTransaction(txID string, txDetails *safe.TransactionDetails) bool {
+// isValidRecoveryTransaction checks if a transaction is a valid recovery transaction.
+func (c *Safe) isValidRecoveryTransaction(safeTxHash string, txDetails *safe.MultisigTransaction) bool {
 	// Check if txDetails is nil
 	if txDetails == nil {
 		c.log.WithFields(logrus.Fields{
-			"tx_id": txID,
+			"safe_tx_hash": safeTxHash,
 		}).WithError(errors.New("transaction details is nil")).Warn("invalid recovery transaction queued")
 
 		return false
 	}
 
 	// Check to address
-	if txDetails.TxData.To.Value != c.splitsContractAddress {
+	if txDetails.To != c.splitsContractAddress {
 		c.log.WithFields(logrus.Fields{
-			"tx_id": txID,
+			"safe_tx_hash": safeTxHash,
 		}).WithError(errors.New("invalid to address")).Warn("non-split recovery transaction queued")
 
 		return false
 	}
 
 	// Check if data decoded is nil
-	if txDetails.TxData.DataDecoded == nil {
+	if txDetails.DataDecoded == nil {
 		c.log.WithFields(logrus.Fields{
-			"tx_id": txID,
+			"safe_tx_hash": safeTxHash,
 		}).WithError(errors.New("data decoded is nil")).Warn("non-split recovery transaction queued")
 
 		return false
 	}
 
 	// Check method
-	if txDetails.TxData.DataDecoded.Method != "updateSplit" {
+	if txDetails.DataDecoded.Method != "updateSplit" {
 		c.log.WithFields(logrus.Fields{
-			"tx_id":  txID,
-			"method": txDetails.TxData.DataDecoded.Method,
+			"safe_tx_hash": safeTxHash,
+			"method":       txDetails.DataDecoded.Method,
 		}).WithError(errors.New("invalid method name, should be updateSplit")).Warn("non-split recovery transaction queued")
 
 		return false
@@ -310,16 +308,16 @@ func (c *Safe) isValidRecoveryTransaction(txID string, txDetails *safe.Transacti
 	return true
 }
 
-// processTransactionAlerts processes various alerts based on transaction data
+// processTransactionAlerts processes various alerts based on transaction data.
 func (c *Safe) processTransactionAlerts(ctx context.Context, txData *TransactionData) {
 	// Check if queue size is too large
 	c.alertQueueExcess(ctx, len(txData.Transactions))
 
 	// Check for missing recovery transaction
-	c.alertMissingRecovery(ctx, txData.RecoveryTxID)
+	c.alertMissingRecovery(ctx, txData.RecoveryTxHash)
 
 	// Check for invalid recovery transaction
-	c.alertInvalidRecovery(ctx, txData.RecoveryTxID, txData.InvalidRecoveryError)
+	c.alertInvalidRecovery(ctx, txData.RecoveryTxHash, txData.InvalidRecoveryError)
 
 	// Check if recovery transaction is not next in queue
 	c.alertNotNextRecovery(ctx, txData)
@@ -328,7 +326,7 @@ func (c *Safe) processTransactionAlerts(ctx context.Context, txData *Transaction
 	c.alertConfirmationStatus(ctx, txData)
 }
 
-// alertQueueExcess checks and alerts if queue size is too large
+// alertQueueExcess checks and alerts if queue size is too large.
 func (c *Safe) alertQueueExcess(ctx context.Context, queueSize int) {
 	shouldAlert := c.excessQueue.Update(queueSize)
 	if shouldAlert {
@@ -342,7 +340,7 @@ func (c *Safe) alertQueueExcess(ctx context.Context, queueSize int) {
 	}
 }
 
-// alertMissingRecovery checks and alerts if recovery transaction is missing
+// alertMissingRecovery checks and alerts if recovery transaction is missing.
 func (c *Safe) alertMissingRecovery(ctx context.Context, recoveryTx string) {
 	shouldAlert := c.missing.Update(recoveryTx == "")
 	if shouldAlert {
@@ -354,7 +352,7 @@ func (c *Safe) alertMissingRecovery(ctx context.Context, recoveryTx string) {
 	}
 }
 
-// alertInvalidRecovery checks and alerts if recovery transaction is invalid
+// alertInvalidRecovery checks and alerts if recovery transaction is invalid.
 func (c *Safe) alertInvalidRecovery(ctx context.Context, recoveryTx string, invalidError error) {
 	shouldAlert := c.invalid.Update(invalidError)
 	if shouldAlert && invalidError != nil {
@@ -368,21 +366,21 @@ func (c *Safe) alertInvalidRecovery(ctx context.Context, recoveryTx string, inva
 	}
 }
 
-// alertNotNextRecovery checks and alerts if recovery transaction is not next in queue
+// alertNotNextRecovery checks and alerts if recovery transaction is not next in queue.
 func (c *Safe) alertNotNextRecovery(ctx context.Context, txData *TransactionData) {
-	shouldAlert := c.next.Update(txData.RecoveryTxID != "", txData.InvalidRecoveryError == nil, txData.HasNextRecoveryTx)
+	shouldAlert := c.next.Update(txData.RecoveryTxHash != "", txData.InvalidRecoveryError == nil, txData.HasNextRecoveryTx)
 	if shouldAlert {
 		c.log.WithFields(logrus.Fields{
-			"tx_id": txData.RecoveryTxID,
+			"tx_id": txData.RecoveryTxHash,
 		}).Warn("Alerting recovery transaction not next")
 
-		if err := c.publisher.Publish(event.NewRecoveryTransactionNotNext(time.Now(), c.monitor, c.name, c.address, txData.RecoveryTxID)); err != nil {
-			c.log.WithError(err).WithField("tx_id", txData.RecoveryTxID).Error("Error publishing recovery transaction not next alert")
+		if err := c.publisher.Publish(event.NewRecoveryTransactionNotNext(time.Now(), c.monitor, c.name, c.address, txData.RecoveryTxHash)); err != nil {
+			c.log.WithError(err).WithField("tx_id", txData.RecoveryTxHash).Error("Error publishing recovery transaction not next alert")
 		}
 	}
 }
 
-// alertConfirmationStatus checks and alerts about confirmation status
+// alertConfirmationStatus checks and alerts about confirmation status.
 func (c *Safe) alertConfirmationStatus(ctx context.Context, txData *TransactionData) {
 	expectedConfirmations := txData.RequiredConfirmations - 1
 	// Handle special case where a safe multisig only requires 1 confirmation
@@ -395,10 +393,10 @@ func (c *Safe) alertConfirmationStatus(ctx context.Context, txData *TransactionD
 		c.log.WithFields(logrus.Fields{
 			"current_confirmations":  txData.CurrentConfirmations,
 			"expected_confirmations": expectedConfirmations,
-			"tx_id":                  txData.RecoveryTxID,
+			"tx_id":                  txData.RecoveryTxHash,
 		}).Warn("Alerting recovery transaction not pre-signed")
 
-		if err := c.publisher.Publish(event.NewRecoveryTransactionConfirmations(time.Now(), c.monitor, c.name, c.address, txData.RecoveryTxID, txData.CurrentConfirmations, expectedConfirmations)); err != nil {
+		if err := c.publisher.Publish(event.NewRecoveryTransactionConfirmations(time.Now(), c.monitor, c.name, c.address, txData.RecoveryTxHash, txData.CurrentConfirmations, expectedConfirmations)); err != nil {
 			c.log.WithError(err).WithFields(logrus.Fields{
 				"current_confirmations":  txData.CurrentConfirmations,
 				"expected_confirmations": expectedConfirmations,
@@ -407,7 +405,7 @@ func (c *Safe) alertConfirmationStatus(ctx context.Context, txData *TransactionD
 	}
 }
 
-// updateTransactionMetrics updates metrics based on transaction data
+// updateTransactionMetrics updates metrics based on transaction data.
 func (c *Safe) updateTransactionMetrics(txData *TransactionData) {
 	// Calculate expected confirmations
 	expectedConfirmations := txData.RequiredConfirmations - 1
@@ -417,11 +415,11 @@ func (c *Safe) updateTransactionMetrics(txData *TransactionData) {
 
 	// Update metrics
 	c.metrics.UpdateTransactionRecoveryValid(
-		boolToFloat64(txData.RecoveryTxID != "" && txData.InvalidRecoveryError == nil),
+		boolToFloat64(txData.RecoveryTxHash != "" && txData.InvalidRecoveryError == nil),
 		[]string{c.name, c.address, c.Type()},
 	)
 	c.metrics.UpdateTransactionRecoveryExists(
-		boolToFloat64(txData.RecoveryTxID != ""),
+		boolToFloat64(txData.RecoveryTxHash != ""),
 		[]string{c.name, c.address, c.Type()},
 	)
 	c.metrics.UpdateTransactionRecoveryNext(
@@ -443,7 +441,7 @@ func boolToFloat64(b bool) float64 {
 	return 0
 }
 
-// TransactionParams contains parsed transaction parameters
+// TransactionParams contains parsed transaction parameters.
 type TransactionParams struct {
 	SplitAddress   string
 	Accounts       []string
@@ -451,14 +449,14 @@ type TransactionParams struct {
 	DistributorFee uint32
 }
 
-func (c *Safe) checkRecoveryParameters(tx *safe.TransactionDetails) error {
+func (c *Safe) checkRecoveryParameters(tx *safe.MultisigTransaction) error {
 	// Validate transaction basics
 	if err := c.validateTxBasics(tx); err != nil {
 		return err
 	}
 
 	// Parse parameters
-	params, err := c.parseTxParameters(tx.TxData.DataDecoded.Parameters)
+	params, err := c.parseTxParameters(tx.DataDecoded.Parameters)
 	if err != nil {
 		return err
 	}
@@ -486,25 +484,25 @@ func (c *Safe) checkRecoveryParameters(tx *safe.TransactionDetails) error {
 	return nil
 }
 
-// validateTxBasics performs basic validation on the transaction
-func (c *Safe) validateTxBasics(tx *safe.TransactionDetails) error {
+// validateTxBasics performs basic validation on the transaction.
+func (c *Safe) validateTxBasics(tx *safe.MultisigTransaction) error {
 	// First, verify tx and its data are not nil
 	if tx == nil {
 		return fmt.Errorf("transaction details is nil")
 	}
 
-	if tx.TxData.DataDecoded == nil {
+	if tx.DataDecoded == nil {
 		return fmt.Errorf("transaction data decoded is nil")
 	}
 
-	if tx.TxData.DataDecoded.Parameters == nil {
+	if tx.DataDecoded.Parameters == nil {
 		return fmt.Errorf("transaction parameters are nil")
 	}
 
 	return nil
 }
 
-// parseTxParameters parses transaction parameters
+// parseTxParameters parses transaction parameters.
 func (c *Safe) parseTxParameters(parameters []safe.Parameter) (*TransactionParams, error) {
 	result := &TransactionParams{}
 
@@ -536,7 +534,7 @@ func (c *Safe) parseTxParameters(parameters []safe.Parameter) (*TransactionParam
 	return result, nil
 }
 
-// parseSplitAddress parses the split address parameter
+// parseSplitAddress parses the split address parameter.
 func (c *Safe) parseSplitAddress(param safe.Parameter, result *TransactionParams) error {
 	var ok bool
 
@@ -548,7 +546,7 @@ func (c *Safe) parseSplitAddress(param safe.Parameter, result *TransactionParams
 	return nil
 }
 
-// parseAccounts parses the accounts parameter
+// parseAccounts parses the accounts parameter.
 func (c *Safe) parseAccounts(param safe.Parameter, result *TransactionParams) error {
 	accountsIface, ok := param.Value.([]interface{})
 	if !ok {
@@ -571,7 +569,7 @@ func (c *Safe) parseAccounts(param safe.Parameter, result *TransactionParams) er
 	return nil
 }
 
-// parseAllocations parses the percentage allocations parameter
+// parseAllocations parses the percentage allocations parameter.
 func (c *Safe) parseAllocations(param safe.Parameter, result *TransactionParams) error {
 	allocsIface, ok := param.Value.([]interface{})
 	if !ok {
@@ -601,7 +599,7 @@ func (c *Safe) parseAllocations(param safe.Parameter, result *TransactionParams)
 	return nil
 }
 
-// parseDistributorFee parses the distributor fee parameter
+// parseDistributorFee parses the distributor fee parameter.
 func (c *Safe) parseDistributorFee(param safe.Parameter, result *TransactionParams) error {
 	feeStr, ok := param.Value.(string)
 	if !ok {
@@ -618,7 +616,7 @@ func (c *Safe) parseDistributorFee(param safe.Parameter, result *TransactionPara
 	return nil
 }
 
-// validateArrayLengths validates that all arrays have consistent lengths
+// validateArrayLengths validates that all arrays have consistent lengths.
 func (c *Safe) validateArrayLengths(accounts []string, allocations []uint32) error {
 	// Check for nil slices
 	if c.recoveryAccounts == nil {
@@ -648,7 +646,7 @@ func (c *Safe) validateArrayLengths(accounts []string, allocations []uint32) err
 	return nil
 }
 
-// validateAccountsAndAllocations validates that accounts and allocations match expected values
+// validateAccountsAndAllocations validates that accounts and allocations match expected values.
 func (c *Safe) validateAccountsAndAllocations(accounts []string, allocations []uint32) error {
 	// Now we can safely iterate, knowing all arrays have consistent lengths
 	for i, acc := range c.recoveryAccounts {

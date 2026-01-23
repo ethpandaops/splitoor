@@ -13,7 +13,7 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
-// headerTransport adds custom headers to requests
+// headerTransport adds custom headers to requests.
 type headerTransport struct {
 	headers map[string]string
 	base    http.RoundTripper

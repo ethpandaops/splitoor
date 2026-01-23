@@ -10,21 +10,19 @@ import (
 	"time"
 
 	"github.com/sirupsen/logrus"
+	"golang.org/x/time/rate"
 )
 
-// userAgent is required to bypass Safe API's CloudFront user-agent filtering.
-const userAgent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36"
-
-// Client exposes Safe API client
+// Client exposes Safe Transaction Service API client.
 type Client interface {
-	// GetQueuedTransactions returns queued transactions for a safe
-	GetQueuedTransactions(ctx context.Context, safeAddress string) (*QueuedTransactionsResponse, error)
-	// GetTransaction returns details for a specific transaction
-	GetTransaction(ctx context.Context, safeAddress, safeTxHash string) (*TransactionDetails, error)
-	// GetSafe returns details for a specific safe
+	// GetQueuedTransactions returns queued transactions for a safe.
+	GetQueuedTransactions(ctx context.Context, safeAddress string) (*MultisigTransactionsResponse, error)
+	// GetTransaction returns details for a specific transaction.
+	GetTransaction(ctx context.Context, safeTxHash string) (*MultisigTransaction, error)
+	// GetSafe returns details for a specific safe.
 	GetSafe(ctx context.Context, safeAddress string) (*SafeResponse, error)
-	// SetChainID sets the chain ID for the client
-	SetChainID(chainID string)
+	// SetChain sets the chain name for the client.
+	SetChain(chain string)
 }
 
 type client struct {
@@ -33,74 +31,98 @@ type client struct {
 	apiKey  string
 	client  *http.Client
 	metrics *Metrics
+	limiter *rate.Limiter
 
-	chainID string
-	mu      sync.Mutex
+	chain string
+	mu    sync.Mutex
 }
 
-// NewClient creates a new Safe API client
-func NewClient(ctx context.Context, log logrus.FieldLogger, monitor string, conf *Config) (*client, error) {
+// NewClient creates a new Safe Transaction Service API client.
+func NewClient(
+	ctx context.Context,
+	log logrus.FieldLogger,
+	monitor string,
+	conf *Config,
+) (*client, error) {
 	return &client{
 		log:     log.WithField("module", "safe"),
 		baseURL: conf.Endpoint,
 		apiKey:  conf.APIKey,
 		client:  &http.Client{},
 		metrics: GetMetricsInstance("splitoor_safe", monitor),
+		limiter: rate.NewLimiter(rate.Limit(5), 1), // 5 req/s, burst of 1
 	}, nil
 }
 
-func (c *client) SetChainID(chainID string) {
+// SetChain sets the chain name for the client.
+func (c *client) SetChain(chain string) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
-	c.chainID = chainID
+	c.chain = chain
 }
 
-func (c *client) GetQueuedTransactions(ctx context.Context, safeAddress string) (*QueuedTransactionsResponse, error) {
+func (c *client) GetQueuedTransactions(
+	ctx context.Context,
+	safeAddress string,
+) (*MultisigTransactionsResponse, error) {
 	c.mu.Lock()
 
-	cid := c.chainID
-	if cid == "" {
+	chain := c.chain
+	if chain == "" {
 		c.mu.Unlock()
 
-		return nil, fmt.Errorf("chain ID is not set")
+		return nil, fmt.Errorf("chain is not set")
 	}
 
 	c.mu.Unlock()
 
-	path := "/v1/chains/:chain_id/safes/:safe_address/transactions/queued"
+	if err := c.limiter.Wait(ctx); err != nil {
+		return nil, fmt.Errorf("rate limiter: %w", err)
+	}
+
+	path := "/tx-service/:chain/api/v1/safes/:safe_address/multisig-transactions/"
 	start := time.Now()
 
-	c.metrics.ObserveRequest("GET", c.baseURL, path, cid, safeAddress)
+	c.metrics.ObserveRequest("GET", c.baseURL, path, chain, safeAddress)
 
-	url := fmt.Sprintf("%s/v1/chains/%s/safes/%s/transactions/queued", c.baseURL, cid, safeAddress)
+	url := fmt.Sprintf(
+		"%s/tx-service/%s/api/v1/safes/%s/multisig-transactions/?executed=false",
+		c.baseURL,
+		chain,
+		safeAddress,
+	)
 
 	req, err := http.NewRequestWithContext(ctx, "GET", url, http.NoBody)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create request: %w", err)
 	}
 
-	req.Header.Set("User-Agent", userAgent)
-
-	if c.apiKey != "" {
-		req.Header.Set("Authorization", "Bearer "+c.apiKey)
-	}
+	req.Header.Set("Authorization", "Bearer "+c.apiKey)
 
 	resp, err := c.client.Do(req)
 	if err != nil {
-		c.metrics.ObserveResponse("GET", c.baseURL, path, "error", cid, safeAddress, time.Since(start))
+		c.metrics.ObserveResponse("GET", c.baseURL, path, "error", chain, safeAddress, time.Since(start))
 
 		return nil, fmt.Errorf("failed to execute request: %w", err)
 	}
 	defer resp.Body.Close()
 
-	c.metrics.ObserveResponse("GET", c.baseURL, path, strconv.Itoa(resp.StatusCode), cid, safeAddress, time.Since(start))
+	c.metrics.ObserveResponse(
+		"GET",
+		c.baseURL,
+		path,
+		strconv.Itoa(resp.StatusCode),
+		chain,
+		safeAddress,
+		time.Since(start),
+	)
 
 	if resp.StatusCode != http.StatusOK {
 		return nil, fmt.Errorf("unexpected status code: %d", resp.StatusCode)
 	}
 
-	var result QueuedTransactionsResponse
+	var result MultisigTransactionsResponse
 	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
 		return nil, fmt.Errorf("failed to decode response: %w", err)
 	}
@@ -108,51 +130,67 @@ func (c *client) GetQueuedTransactions(ctx context.Context, safeAddress string) 
 	return &result, nil
 }
 
-func (c *client) GetTransaction(ctx context.Context, safeAddress, safeTxHash string) (*TransactionDetails, error) {
+func (c *client) GetTransaction(
+	ctx context.Context,
+	safeTxHash string,
+) (*MultisigTransaction, error) {
 	c.mu.Lock()
 
-	cid := c.chainID
-	if cid == "" {
+	chain := c.chain
+	if chain == "" {
 		c.mu.Unlock()
 
-		return nil, fmt.Errorf("chain ID is not set")
+		return nil, fmt.Errorf("chain is not set")
 	}
 
 	c.mu.Unlock()
 
-	path := "/v1/chains/:chain_id/transactions/:safe_tx_hash"
+	if err := c.limiter.Wait(ctx); err != nil {
+		return nil, fmt.Errorf("rate limiter: %w", err)
+	}
+
+	path := "/tx-service/:chain/api/v1/multisig-transactions/:safe_tx_hash/"
 	start := time.Now()
 
-	c.metrics.ObserveRequest("GET", c.baseURL, path, cid, safeAddress)
+	c.metrics.ObserveRequest("GET", c.baseURL, path, chain, safeTxHash)
 
-	url := fmt.Sprintf("%s/v1/chains/%s/transactions/%s", c.baseURL, cid, safeTxHash)
+	url := fmt.Sprintf(
+		"%s/tx-service/%s/api/v1/multisig-transactions/%s/",
+		c.baseURL,
+		chain,
+		safeTxHash,
+	)
 
 	req, err := http.NewRequestWithContext(ctx, "GET", url, http.NoBody)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create request: %w", err)
 	}
 
-	req.Header.Set("User-Agent", userAgent)
-
-	if c.apiKey != "" {
-		req.Header.Set("Authorization", "Bearer "+c.apiKey)
-	}
+	req.Header.Set("Authorization", "Bearer "+c.apiKey)
 
 	resp, err := c.client.Do(req)
 	if err != nil {
-		c.metrics.ObserveResponse("GET", c.baseURL, path, "error", cid, safeAddress, time.Since(start))
+		c.metrics.ObserveResponse("GET", c.baseURL, path, "error", chain, safeTxHash, time.Since(start))
 
 		return nil, fmt.Errorf("failed to execute request: %w", err)
 	}
 	defer resp.Body.Close()
 
-	c.metrics.ObserveResponse("GET", c.baseURL, path, strconv.Itoa(resp.StatusCode), cid, safeAddress, time.Since(start))
+	c.metrics.ObserveResponse(
+		"GET",
+		c.baseURL,
+		path,
+		strconv.Itoa(resp.StatusCode),
+		chain,
+		safeTxHash,
+		time.Since(start),
+	)
 
 	if resp.StatusCode != http.StatusOK {
 		return nil, fmt.Errorf("unexpected status code: %d", resp.StatusCode)
 	}
 
-	var result TransactionDetails
+	var result MultisigTransaction
 	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
 		return nil, fmt.Errorf("failed to decode response: %w", err)
 	}
@@ -163,42 +201,55 @@ func (c *client) GetTransaction(ctx context.Context, safeAddress, safeTxHash str
 func (c *client) GetSafe(ctx context.Context, safeAddress string) (*SafeResponse, error) {
 	c.mu.Lock()
 
-	cid := c.chainID
-	if cid == "" {
+	chain := c.chain
+	if chain == "" {
 		c.mu.Unlock()
 
-		return nil, fmt.Errorf("chain ID is not set")
+		return nil, fmt.Errorf("chain is not set")
 	}
 
 	c.mu.Unlock()
 
-	path := "/v1/chains/:chain_id/safes/:safe_address"
+	if err := c.limiter.Wait(ctx); err != nil {
+		return nil, fmt.Errorf("rate limiter: %w", err)
+	}
+
+	path := "/tx-service/:chain/api/v1/safes/:safe_address/"
 	start := time.Now()
 
-	c.metrics.ObserveRequest("GET", c.baseURL, path, cid, safeAddress)
+	c.metrics.ObserveRequest("GET", c.baseURL, path, chain, safeAddress)
 
-	url := fmt.Sprintf("%s/v1/chains/%s/safes/%s", c.baseURL, cid, safeAddress)
+	url := fmt.Sprintf(
+		"%s/tx-service/%s/api/v1/safes/%s/",
+		c.baseURL,
+		chain,
+		safeAddress,
+	)
 
 	req, err := http.NewRequestWithContext(ctx, "GET", url, http.NoBody)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create request: %w", err)
 	}
 
-	req.Header.Set("User-Agent", userAgent)
-
-	if c.apiKey != "" {
-		req.Header.Set("Authorization", "Bearer "+c.apiKey)
-	}
+	req.Header.Set("Authorization", "Bearer "+c.apiKey)
 
 	resp, err := c.client.Do(req)
 	if err != nil {
-		c.metrics.ObserveResponse("GET", c.baseURL, path, "error", cid, safeAddress, time.Since(start))
+		c.metrics.ObserveResponse("GET", c.baseURL, path, "error", chain, safeAddress, time.Since(start))
 
 		return nil, fmt.Errorf("failed to execute request: %w", err)
 	}
 	defer resp.Body.Close()
 
-	c.metrics.ObserveResponse("GET", c.baseURL, path, strconv.Itoa(resp.StatusCode), cid, safeAddress, time.Since(start))
+	c.metrics.ObserveResponse(
+		"GET",
+		c.baseURL,
+		path,
+		strconv.Itoa(resp.StatusCode),
+		chain,
+		safeAddress,
+		time.Since(start),
+	)
 
 	if resp.StatusCode != http.StatusOK {
 		return nil, fmt.Errorf("unexpected status code: %d", resp.StatusCode)

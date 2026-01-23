@@ -8,7 +8,7 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-// Test for deadlock prevention in the Merge method
+// Test for deadlock prevention in the Merge method.
 func TestState_Merge_DeadlockPrevention(t *testing.T) {
 	log := logrus.New()
 	log.SetOutput(logrus.StandardLogger().Out)
@@ -22,12 +22,12 @@ func TestState_Merge_DeadlockPrevention(t *testing.T) {
 	stateA.Validators = make(map[string]*Validators)
 	stateB.Validators = make(map[string]*Validators)
 
-	// Add test data 
+	// Add test data
 	stateA.Validators["pubkey1"] = &Validators{
 		Sources: map[string]*Validator{
 			"sourceA": {
-				Balance:                    1000,
-				Status:                     "active",
+				Balance:                   1000,
+				Status:                    "active",
 				WithdrawalCredentialsCode: 0,
 			},
 		},
@@ -36,8 +36,8 @@ func TestState_Merge_DeadlockPrevention(t *testing.T) {
 	stateB.Validators["pubkey2"] = &Validators{
 		Sources: map[string]*Validator{
 			"sourceB": {
-				Balance:                    2000,
-				Status:                     "pending",
+				Balance:                   2000,
+				Status:                    "pending",
 				WithdrawalCredentialsCode: 1,
 			},
 		},
@@ -51,11 +51,13 @@ func TestState_Merge_DeadlockPrevention(t *testing.T) {
 	// This would deadlock without the fix we implemented
 	go func() {
 		defer wg.Done()
+
 		stateA.Merge(stateB)
 	}()
 
 	go func() {
 		defer wg.Done()
+
 		stateB.Merge(stateA)
 	}()
 

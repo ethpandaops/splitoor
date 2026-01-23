@@ -2,171 +2,88 @@ package safe
 
 import "strings"
 
-type QueuedTransactionsResponse struct {
-	Count    int                       `json:"count"`
-	Next     *string                   `json:"next"`
-	Previous *string                   `json:"previous"`
-	Results  []QueuedTransactionResult `json:"results"`
+// MultisigTransactionsResponse represents the response from /multisig-transactions/?executed=false.
+type MultisigTransactionsResponse struct {
+	Count            int                   `json:"count"`
+	Next             *string               `json:"next"`
+	Previous         *string               `json:"previous"`
+	Results          []MultisigTransaction `json:"results"`
+	CountUniqueNonce int                   `json:"countUniqueNonce"`
 }
 
-type QueuedTransactionResult struct {
-	Type         string       `json:"type"`
-	Label        *string      `json:"label,omitempty"`
-	Transaction  *Transaction `json:"transaction,omitempty"`
-	ConflictType *string      `json:"conflictType,omitempty"`
+// MultisigTransaction represents a multisig transaction from the Transaction Service API.
+// Used for both list and detail endpoints.
+type MultisigTransaction struct {
+	Safe                  string         `json:"safe"`
+	To                    string         `json:"to"`
+	Value                 string         `json:"value"`
+	Data                  *string        `json:"data"`
+	Operation             int            `json:"operation"`
+	SafeTxHash            string         `json:"safeTxHash"`
+	Nonce                 int            `json:"nonce"`
+	SubmissionDate        string         `json:"submissionDate"`
+	IsExecuted            bool           `json:"isExecuted"`
+	ConfirmationsRequired int            `json:"confirmationsRequired"`
+	Confirmations         []Confirmation `json:"confirmations"`
+	DataDecoded           *DataDecoded   `json:"dataDecoded"`
+	Proposer              string         `json:"proposer"`
+	Origin                string         `json:"origin"`
+	Trusted               bool           `json:"trusted"`
 }
 
-type Transaction struct {
-	ID            string          `json:"id"`
-	Timestamp     int64           `json:"timestamp"`
-	TxStatus      string          `json:"txStatus"`
-	TxInfo        TransactionInfo `json:"txInfo"`
-	ExecutionInfo ExecutionInfo   `json:"executionInfo"`
-	SafeAppInfo   *SafeAppInfo    `json:"safeAppInfo"`
-	TxHash        *string         `json:"txHash"`
+// Confirmation represents a transaction confirmation.
+type Confirmation struct {
+	Owner          string `json:"owner"`
+	SubmissionDate string `json:"submissionDate"`
+	Signature      string `json:"signature"`
+	SignatureType  string `json:"signatureType"`
 }
 
-type TransactionInfo struct {
-	Type             string        `json:"type"`
-	HumanDescription *string       `json:"humanDescription"`
-	Sender           AddressInfo   `json:"sender"`
-	Recipient        AddressInfo   `json:"recipient"`
-	Direction        string        `json:"direction"`
-	TransferInfo     *TransferInfo `json:"transferInfo,omitempty"`
-}
-
-type ExecutionInfo struct {
-	Type                   string        `json:"type"`
-	Nonce                  int           `json:"nonce"`
-	ConfirmationsRequired  int           `json:"confirmationsRequired"`
-	ConfirmationsSubmitted int           `json:"confirmationsSubmitted"`
-	MissingSigners         []AddressInfo `json:"missingSigners,omitempty"`
-}
-
-type AddressInfo struct {
-	Value   string  `json:"value"`
-	Name    *string `json:"name"`
-	LogoURI *string `json:"logoUri"`
-}
-
-type TransferInfo struct {
-	Type  string `json:"type"`
-	Value string `json:"value"`
-}
-
-type SafeAppInfo struct {
-	Name    string `json:"name"`
-	URL     string `json:"url"`
-	LogoURI string `json:"logoUri"`
-}
-
-type TransactionDetails struct {
-	SafeAddress           string                `json:"safeAddress"`
-	TxID                  string                `json:"txId"`
-	ExecutedAt            *string               `json:"executedAt"`
-	TxStatus              string                `json:"txStatus"`
-	TxInfo                TransactionInfo       `json:"txInfo"`
-	TxData                TransactionData       `json:"txData"`
-	TxHash                *string               `json:"txHash"`
-	DetailedExecutionInfo DetailedExecutionInfo `json:"detailedExecutionInfo"`
-	SafeAppInfo           *SafeAppInfo          `json:"safeAppInfo"`
-	Note                  *string               `json:"note"`
-}
-
-type TransactionData struct {
-	HexData                   *string                 `json:"hexData"`
-	DataDecoded               *DataDecoded            `json:"dataDecoded"`
-	To                        AddressInfo             `json:"to"`
-	Value                     string                  `json:"value"`
-	Operation                 int                     `json:"operation"`
-	TrustedDelegateCallTarget *string                 `json:"trustedDelegateCallTarget"`
-	AddressInfoIndex          *map[string]AddressInfo `json:"addressInfoIndex"`
-}
-
+// DataDecoded represents decoded transaction data.
 type DataDecoded struct {
 	Method     string      `json:"method"`
 	Parameters []Parameter `json:"parameters"`
 }
 
+// Parameter represents a decoded parameter from transaction data.
 type Parameter struct {
-	Name         string      `json:"name"`
-	Type         string      `json:"type"`
-	Value        interface{} `json:"value"`
-	ValueDecoded interface{} `json:"valueDecoded"`
+	Name         string `json:"name"`
+	Type         string `json:"type"`
+	Value        any    `json:"value"`
+	ValueDecoded any    `json:"valueDecoded"`
 }
 
-type DetailedExecutionInfo struct {
-	Type                  string         `json:"type"`
-	SubmittedAt           int64          `json:"submittedAt"`
-	Nonce                 int            `json:"nonce"`
-	SafeTxGas             string         `json:"safeTxGas"`
-	BaseGas               string         `json:"baseGas"`
-	GasPrice              string         `json:"gasPrice"`
-	GasToken              string         `json:"gasToken"`
-	RefundReceiver        AddressInfo    `json:"refundReceiver"`
-	SafeTxHash            string         `json:"safeTxHash"`
-	Executor              *AddressInfo   `json:"executor"`
-	Signers               []AddressInfo  `json:"signers"`
-	ConfirmationsRequired int            `json:"confirmationsRequired"`
-	Confirmations         []Confirmation `json:"confirmations"`
-	Rejectors             []AddressInfo  `json:"rejectors"`
-	GasTokenInfo          *TokenInfo     `json:"gasTokenInfo"`
-	Trusted               bool           `json:"trusted"`
-	Proposer              AddressInfo    `json:"proposer"`
-	ProposedByDelegate    *string        `json:"proposedByDelegate"`
-}
-
-type Confirmation struct {
-	Signer      AddressInfo `json:"signer"`
-	Signature   string      `json:"signature"`
-	SubmittedAt int64       `json:"submittedAt"`
-}
-
-type TokenInfo struct {
-	Name     string `json:"name"`
-	Symbol   string `json:"symbol"`
-	Decimals int    `json:"decimals"`
-	LogoURI  string `json:"logoUri"`
-}
-
+// SafeResponse represents the response from /safes/{address}/.
 type SafeResponse struct {
-	Address                    AddressInfo   `json:"address"`
-	ChainID                    string        `json:"chainId"`
-	Nonce                      int           `json:"nonce"`
-	Threshold                  int           `json:"threshold"`
-	Owners                     []AddressInfo `json:"owners"`
-	Implementation             AddressInfo   `json:"implementation"`
-	ImplementationVersionState string        `json:"implementationVersionState"`
-	CollectiblesTag            *string       `json:"collectiblesTag"`
-	TxQueuedTag                string        `json:"txQueuedTag"`
-	TxHistoryTag               string        `json:"txHistoryTag"`
-	MessagesTag                *string       `json:"messagesTag"`
-	Modules                    *string       `json:"modules"`
-	FallbackHandler            *AddressInfo  `json:"fallbackHandler"`
-	Guard                      *AddressInfo  `json:"guard"`
-	Version                    string        `json:"version"`
+	Address         string   `json:"address"`
+	Nonce           int64    `json:"nonce,string"`
+	Threshold       int      `json:"threshold"`
+	Owners          []string `json:"owners"`
+	MasterCopy      string   `json:"masterCopy"`
+	Modules         []string `json:"modules"`
+	FallbackHandler string   `json:"fallbackHandler"`
+	Guard           string   `json:"guard"`
+	Version         *string  `json:"version"`
 }
 
+// CheckSigners verifies that the provided signers match the Safe owners.
 func (s *SafeResponse) CheckSigners(signers []string) bool {
-	// Check for nil slices or empty responses
 	if s == nil {
 		return false
 	}
 
-	// len() for nil slices is defined as zero, so we can simplify this check
 	if len(signers) == 0 {
 		return false
 	}
 
-	// len() for nil slices is defined as zero, so we can simplify this check
 	if len(s.Owners) == 0 {
 		return false
 	}
 
 	// Build map of actual signers
-	actualSigners := make(map[string]bool)
+	actualSigners := make(map[string]bool, len(s.Owners))
 	for _, owner := range s.Owners {
-		actualSigners[strings.ToLower(owner.Value)] = true
+		actualSigners[strings.ToLower(owner)] = true
 	}
 
 	// Check if all provided signers are actual signers

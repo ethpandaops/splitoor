@@ -31,7 +31,6 @@ func (c *client) get(ctx context.Context, path, url string) ([]byte, error) {
 	}()
 
 	req, err := http.NewRequestWithContext(ctx, "GET", url, http.NoBody)
-
 	if err != nil {
 		return nil, err
 	}
@@ -41,8 +40,8 @@ func (c *client) get(ctx context.Context, path, url string) ([]byte, error) {
 	}
 
 	client := &http.Client{}
-	resp, err := client.Do(req)
 
+	resp, err := client.Do(req)
 	if err != nil {
 		return nil, err
 	}

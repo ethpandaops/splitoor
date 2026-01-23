@@ -60,11 +60,13 @@ func (s *State) Merge(other *State) (changedPubkeys []string) {
 	if uintptr(unsafe.Pointer(s)) < uintptr(unsafe.Pointer(other)) {
 		s.mu.Lock()
 		defer s.mu.Unlock()
+
 		other.mu.Lock()
 		defer other.mu.Unlock()
 	} else {
 		other.mu.Lock()
 		defer other.mu.Unlock()
+
 		s.mu.Lock()
 		defer s.mu.Unlock()
 	}

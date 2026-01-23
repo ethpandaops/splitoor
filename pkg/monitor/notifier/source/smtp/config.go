@@ -6,7 +6,7 @@ import (
 	"github.com/creasty/defaults"
 )
 
-// Config represents the configuration for the email source
+// Config represents the configuration for the email source.
 type Config struct {
 	// SMTP server host
 	Host string `yaml:"host" default:"localhost"`
@@ -26,7 +26,7 @@ type Config struct {
 	InsecureSkipVerify bool `yaml:"insecureSkipVerify" default:"false"`
 }
 
-// SetDefaults sets the default values for the config
+// SetDefaults sets the default values for the config.
 func (c *Config) SetDefaults() error {
 	if err := defaults.Set(c); err != nil {
 		return err
@@ -35,7 +35,7 @@ func (c *Config) SetDefaults() error {
 	return nil
 }
 
-// Validate validates the config
+// Validate validates the config.
 func (c *Config) Validate() error {
 	if c.Host == "" {
 		return errors.New("host is required")

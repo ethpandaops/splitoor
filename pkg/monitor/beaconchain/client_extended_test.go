@@ -22,7 +22,7 @@ func TestGetValidatorsSafetyChecks(t *testing.T) {
 			Status: "OK",
 			Data:   nil, // Intentionally nil
 		}
-		json.NewEncoder(w).Encode(resp)
+		_ = json.NewEncoder(w).Encode(resp)
 	}))
 	defer server.Close()
 
@@ -50,7 +50,7 @@ func TestGetValidatorsSafetyChecks(t *testing.T) {
 			Status: "OK",
 			Data:   []Validator{}, // Empty but not nil
 		}
-		json.NewEncoder(w).Encode(resp)
+		_ = json.NewEncoder(w).Encode(resp)
 	}))
 	defer server2.Close()
 
@@ -65,7 +65,7 @@ func TestGetValidatorsSafetyChecks(t *testing.T) {
 	// Create a test server that returns validators with nil entries
 	server3 := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		// This is invalid JSON but we're testing robustness
-		w.Write([]byte(`{"status":"OK","data":[null,{"pubkey":"0x123","status":"active"},null]}`))
+		_, _ = w.Write([]byte(`{"status":"OK","data":[null,{"pubkey":"0x123","status":"active"},null]}`))
 	}))
 	defer server3.Close()
 
@@ -110,7 +110,7 @@ func TestGetValidatorSafetyChecks(t *testing.T) {
 			Status: "ERROR",
 			Data:   Validator{},
 		}
-		json.NewEncoder(w).Encode(resp)
+		_ = json.NewEncoder(w).Encode(resp)
 	}))
 	defer server2.Close()
 
@@ -151,6 +151,7 @@ func TestRequestHandlingSafetyChecks(t *testing.T) {
 	// Test context cancellation
 	ctx, cancel := context.WithCancel(context.Background())
 	cancel() // Cancel immediately
+
 	_, err = client.GetValidator(ctx, "0x123")
 	assert.Error(t, err, "Should handle cancelled context with error")
 
@@ -159,14 +160,16 @@ func TestRequestHandlingSafetyChecks(t *testing.T) {
 	defer cancel()
 	// Sleep to ensure timeout
 	time.Sleep(10 * time.Millisecond)
+
 	_, err = client.GetValidator(ctx, "0x123")
 	assert.Error(t, err, "Should handle context timeout with error")
 }
 
-// Tests for the public interface methods
+// Tests for the public interface methods.
 func TestGetBatchSize(t *testing.T) {
 	log := logrus.New()
 	log.SetLevel(logrus.FatalLevel) // Suppress log output during tests
+
 	expectedBatchSize := 42
 
 	client, err := NewClient(context.Background(), log, "test", &Config{
@@ -184,6 +187,7 @@ func TestGetBatchSize(t *testing.T) {
 func TestGetMaxRequestsPerMinute(t *testing.T) {
 	log := logrus.New()
 	log.SetLevel(logrus.FatalLevel) // Suppress log output during tests
+
 	expectedMaxRequests := 123
 
 	client, err := NewClient(context.Background(), log, "test", &Config{
@@ -201,6 +205,7 @@ func TestGetMaxRequestsPerMinute(t *testing.T) {
 func TestGetCheckInterval(t *testing.T) {
 	log := logrus.New()
 	log.SetLevel(logrus.FatalLevel) // Suppress log output during tests
+
 	expectedInterval := 42 * time.Second
 
 	client, err := NewClient(context.Background(), log, "test", &Config{

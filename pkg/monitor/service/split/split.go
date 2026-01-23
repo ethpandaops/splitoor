@@ -57,7 +57,12 @@ func (s *Service) Start(ctx context.Context) error {
 			return errors.Wrap(err, "failed to get chain id from execution node")
 		}
 
-		s.safeClient.SetChainID(chainID.String())
+		chainName, ok := safe.ChainIDToName[chainID.String()]
+		if !ok {
+			return errors.Errorf("unsupported chain ID for Safe API: %s", chainID.String())
+		}
+
+		s.safeClient.SetChain(chainName)
 	}
 
 	for _, g := range s.groups {

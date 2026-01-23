@@ -9,29 +9,10 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-// Create a mock RawMessage for testing
-type mockRawMessage struct {
-	shouldError bool
-	data        map[string]interface{}
-}
-
-// Implement the same methods as RawMessage for compatibility
-func (m *mockRawMessage) UnmarshalYAML(unmarshal func(interface{}) error) error {
-	return nil
-}
-
-func (m *mockRawMessage) Unmarshal(v interface{}) error {
-	if m.shouldError {
-		return errors.New("mock unmarshal error")
-	}
-
-	if mapPtr, ok := v.(*map[string]interface{}); ok {
-		*mapPtr = m.data
-		return nil
-	}
-
-	return errors.New("unsupported type")
-}
+const (
+	testMonitorName = "test-monitor"
+	testSourceName  = "test-source"
+)
 
 func TestNewSourceInvalidType(t *testing.T) {
 	// Setup logger
@@ -39,16 +20,12 @@ func TestNewSourceInvalidType(t *testing.T) {
 	log.SetLevel(logrus.FatalLevel) // Suppress log output during tests
 
 	ctx := context.Background()
-	monitor := "test-monitor"
-	sourceName := "test-source"
-	var docs *string = nil
 	sourceType := SourceTypeUnknown // Invalid type
 	includeMonitorName := true
 	includeGroupName := true
-	var config *RawMessage = nil
 
 	// Should return error for unknown source type
-	_, err := NewSource(ctx, log, monitor, sourceName, docs, sourceType, includeMonitorName, includeGroupName, config)
+	_, err := NewSource(ctx, log, testMonitorName, testSourceName, nil, sourceType, includeMonitorName, includeGroupName, nil)
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "source type is required")
 }
@@ -59,16 +36,12 @@ func TestNewSourceUnsupportedType(t *testing.T) {
 	log.SetLevel(logrus.FatalLevel) // Suppress log output during tests
 
 	ctx := context.Background()
-	monitor := "test-monitor"
-	sourceName := "test-source"
-	var docs *string = nil
 	sourceType := SourceType("unsupported") // Valid but unsupported type
 	includeMonitorName := true
 	includeGroupName := true
-	var config *RawMessage = nil
 
 	// Should return error for unsupported source type
-	_, err := NewSource(ctx, log, monitor, sourceName, docs, sourceType, includeMonitorName, includeGroupName, config)
+	_, err := NewSource(ctx, log, testMonitorName, testSourceName, nil, sourceType, includeMonitorName, includeGroupName, nil)
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "source type is not supported")
 }
@@ -79,27 +52,24 @@ func TestNewSourceConfigUnmarshalError(t *testing.T) {
 	log.SetLevel(logrus.FatalLevel) // Suppress log output during tests
 
 	ctx := context.Background()
-	monitor := "test-monitor"
-	sourceName := "test-source"
-	var docs *string = nil
 	sourceType := SourceTypeDiscord // Valid type
 	includeMonitorName := true
 	includeGroupName := true
 
 	// Create a RawMessage that will return an error
 	mockRawMsg := &RawMessage{
-		unmarshal: func(interface{}) error {
+		unmarshal: func(any) error {
 			return errors.New("mock unmarshal error")
 		},
 	}
 
 	// Should return error when config can't be unmarshalled
-	_, err := NewSource(ctx, log, monitor, sourceName, docs, sourceType, includeMonitorName, includeGroupName, mockRawMsg)
+	_, err := NewSource(ctx, log, testMonitorName, testSourceName, nil, sourceType, includeMonitorName, includeGroupName, mockRawMsg)
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "mock unmarshal error")
 }
 
-// Test the Config validation
+// Test the Config validation.
 func TestConfigValidate(t *testing.T) {
 	// Test with unknown source type
 	config := &Config{
@@ -119,13 +89,15 @@ func TestConfigValidate(t *testing.T) {
 	assert.NoError(t, err)
 }
 
-// Test RawMessage
+// Test RawMessage.
 func TestRawMessageUnmarshal(t *testing.T) {
 	// Create a raw message with a mock unmarshal function
 	var called bool
+
 	rawMsg := &RawMessage{
-		unmarshal: func(v interface{}) error {
+		unmarshal: func(v any) error {
 			called = true
+
 			return nil
 		},
 	}
@@ -138,7 +110,7 @@ func TestRawMessageUnmarshal(t *testing.T) {
 	// Test with a failing unmarshal function
 	expectedErr := errors.New("unmarshal error")
 	rawMsg = &RawMessage{
-		unmarshal: func(v interface{}) error {
+		unmarshal: func(v any) error {
 			return expectedErr
 		},
 	}
@@ -153,7 +125,7 @@ func TestRawMessageUnmarshalYAML(t *testing.T) {
 	rawMsg := &RawMessage{}
 
 	// Create a mock unmarshal function
-	mockUnmarshal := func(v interface{}) error {
+	mockUnmarshal := func(v any) error {
 		return nil
 	}
 

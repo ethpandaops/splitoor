@@ -73,6 +73,7 @@ func (s *SES) GetConfig() *Config {
 
 func (s *SES) Publish(ctx context.Context, e event.Event) error {
 	var errorType string
+
 	defer func() {
 		if errorType != "" {
 			s.metrics.IncErrors(s.monitor, s.name, s.GetType(), errorType)

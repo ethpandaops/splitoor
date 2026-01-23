@@ -12,73 +12,85 @@ import (
 	"github.com/stretchr/testify/mock"
 )
 
-// MockEvent implements the event.Event interface for testing
+// MockEvent implements the event.Event interface for testing.
 type MockEvent struct {
 	mock.Mock
 }
 
 func (m *MockEvent) GetMonitor() string {
 	args := m.Called()
+
 	return args.String(0)
 }
 
 func (m *MockEvent) GetType() string {
 	args := m.Called()
+
 	return args.String(0)
 }
 
 func (m *MockEvent) GetTitle(includeMonitor, includeGroup bool) string {
 	args := m.Called(includeMonitor, includeGroup)
+
 	return args.String(0)
 }
 
 func (m *MockEvent) GetDescriptionText(includeMonitor, includeGroup bool) string {
 	args := m.Called(includeMonitor, includeGroup)
+
 	return args.String(0)
 }
 
 func (m *MockEvent) GetDescriptionMarkdown(includeMonitor, includeGroup bool) string {
 	args := m.Called(includeMonitor, includeGroup)
+
 	return args.String(0)
 }
 
 func (m *MockEvent) GetDescriptionHTML(includeMonitor, includeGroup bool) string {
 	args := m.Called(includeMonitor, includeGroup)
+
 	return args.String(0)
 }
 
 func (m *MockEvent) GetGroup() string {
 	args := m.Called()
+
 	return args.String(0)
 }
 
-// MockSource implements the source.Source interface for testing
+// MockSource implements the source.Source interface for testing.
 type MockSource struct {
 	mock.Mock
 }
 
 func (m *MockSource) Start(ctx context.Context) error {
 	args := m.Called(ctx)
+
 	return args.Error(0)
 }
 
 func (m *MockSource) Stop(ctx context.Context) error {
 	args := m.Called(ctx)
+
 	return args.Error(0)
 }
 
 func (m *MockSource) GetType() string {
 	args := m.Called()
+
 	return args.String(0)
 }
 
 func (m *MockSource) GetName() string {
 	args := m.Called()
+
 	return args.String(0)
 }
 
 func (m *MockSource) Publish(ctx context.Context, e event.Event) error {
 	args := m.Called(ctx, e)
+
 	return args.Error(0)
 }
 
@@ -101,6 +113,7 @@ func TestPublisherNilChecks(t *testing.T) {
 	// Test nil context using PublishWithContext
 	mockEvent := new(MockEvent)
 	mockEvent.On("GetGroup").Return("test-group")
+	//nolint:staticcheck // Testing nil context handling
 	err = publisher.PublishWithContext(nil, mockEvent)
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "cannot publish with nil context")
@@ -225,6 +238,7 @@ func TestPublisherSourceError(t *testing.T) {
 	// Create mock source that returns an error
 	mockSource := new(MockSource)
 	mockSource.On("GetName").Return("error-source")
+
 	expectedErr := fmt.Errorf("publish error")
 	mockSource.On("Publish", mock.Anything, mock.Anything).Return(expectedErr)
 
@@ -332,6 +346,7 @@ func TestPublisherStopError(t *testing.T) {
 	// Create mock source that returns an error on Stop
 	mockSource := new(MockSource)
 	mockSource.On("Start", mock.Anything).Return(nil)
+
 	expectedErr := fmt.Errorf("stop error")
 	mockSource.On("Stop", mock.Anything).Return(expectedErr)
 

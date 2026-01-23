@@ -23,7 +23,7 @@ func NewThreshold(log logrus.FieldLogger, expectedThreshold int) *Threshold {
 	}
 }
 
-// Update returns true if an alert should be triggered
+// Update returns true if an alert should be triggered.
 func (t *Threshold) Update(threshold int) (shouldAlert bool) {
 	t.mu.Lock()
 	defer t.mu.Unlock()

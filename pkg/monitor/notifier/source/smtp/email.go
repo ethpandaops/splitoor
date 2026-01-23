@@ -96,6 +96,7 @@ func (s *SMTP) sendEmail(evt event.Event, subject, body string) error {
 	addr := fmt.Sprintf("%s:%d", s.config.Host, s.config.Port)
 
 	var errorType string
+
 	defer func() {
 		if errorType != "" {
 			s.metrics.IncErrors(evt.GetGroup(), s.name, s.GetType(), errorType)
