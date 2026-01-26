@@ -15,8 +15,8 @@ import (
 
 // Client exposes Safe Transaction Service API client.
 type Client interface {
-	// GetQueuedTransactions returns queued transactions for a safe.
-	GetQueuedTransactions(ctx context.Context, safeAddress string) (*MultisigTransactionsResponse, error)
+	// GetQueuedTransactions returns queued transactions for a safe with nonce >= minNonce.
+	GetQueuedTransactions(ctx context.Context, safeAddress string, minNonce int64) (*MultisigTransactionsResponse, error)
 	// GetTransaction returns details for a specific transaction.
 	GetTransaction(ctx context.Context, safeTxHash string) (*MultisigTransaction, error)
 	// GetSafe returns details for a specific safe.
@@ -117,13 +117,14 @@ func (c *client) getChain() (string, error) {
 func (c *client) GetQueuedTransactions(
 	ctx context.Context,
 	safeAddress string,
+	minNonce int64,
 ) (*MultisigTransactionsResponse, error) {
 	chain, err := c.getChain()
 	if err != nil {
 		return nil, err
 	}
 
-	path := "/tx-service/:chain/api/v1/safes/:safe_address/multisig-transactions/"
+	path := "/tx-service/:chain/api/v2/safes/:safe_address/multisig-transactions/"
 
 	doRequest := func() (*http.Response, time.Time, error) {
 		if waitErr := c.limiter.Wait(ctx); waitErr != nil {
@@ -135,10 +136,11 @@ func (c *client) GetQueuedTransactions(
 		c.metrics.ObserveRequest("GET", c.baseURL, path, chain, safeAddress)
 
 		url := fmt.Sprintf(
-			"%s/tx-service/%s/api/v1/safes/%s/multisig-transactions/?executed=false",
+			"%s/tx-service/%s/api/v2/safes/%s/multisig-transactions/?executed=false&nonce__gte=%d",
 			c.baseURL,
 			chain,
 			safeAddress,
+			minNonce,
 		)
 
 		req, reqErr := http.NewRequestWithContext(ctx, "GET", url, http.NoBody)
@@ -213,7 +215,7 @@ func (c *client) GetTransaction(
 		return nil, err
 	}
 
-	path := "/tx-service/:chain/api/v1/multisig-transactions/:safe_tx_hash/"
+	path := "/tx-service/:chain/api/v2/multisig-transactions/:safe_tx_hash/"
 
 	doRequest := func() (*http.Response, time.Time, error) {
 		if waitErr := c.limiter.Wait(ctx); waitErr != nil {
@@ -225,7 +227,7 @@ func (c *client) GetTransaction(
 		c.metrics.ObserveRequest("GET", c.baseURL, path, chain, safeTxHash)
 
 		url := fmt.Sprintf(
-			"%s/tx-service/%s/api/v1/multisig-transactions/%s/",
+			"%s/tx-service/%s/api/v2/multisig-transactions/%s/",
 			c.baseURL,
 			chain,
 			safeTxHash,

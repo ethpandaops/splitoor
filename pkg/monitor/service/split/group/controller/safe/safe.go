@@ -136,7 +136,7 @@ func (c *Safe) tick(ctx context.Context) {
 	c.checkSignersAndThreshold(ctx, safeRsp)
 
 	// Get and process queued transactions
-	queuedTxData, err := c.getQueuedTransactions(ctx)
+	queuedTxData, err := c.getQueuedTransactions(ctx, safeRsp.Nonce)
 	if err != nil {
 		return
 	}
@@ -187,9 +187,9 @@ type TransactionData struct {
 	RequiredConfirmations int
 }
 
-// getQueuedTransactions fetches and processes queued transactions.
-func (c *Safe) getQueuedTransactions(ctx context.Context) (*TransactionData, error) {
-	queued, err := c.safeClient.GetQueuedTransactions(ctx, c.address)
+// getQueuedTransactions fetches and processes queued transactions with nonce >= safeNonce.
+func (c *Safe) getQueuedTransactions(ctx context.Context, safeNonce int64) (*TransactionData, error) {
+	queued, err := c.safeClient.GetQueuedTransactions(ctx, c.address, safeNonce)
 	if err != nil {
 		c.log.WithError(err).Error("failed to get queued transactions")
 
