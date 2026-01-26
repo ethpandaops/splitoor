@@ -118,7 +118,7 @@ func TestClient_GetQueuedTransactions(t *testing.T) {
 				c.SetChain(tt.chain)
 			}
 
-			resp, err := c.GetQueuedTransactions(context.Background(), tt.safeAddress)
+			resp, err := c.GetQueuedTransactions(context.Background(), tt.safeAddress, 0)
 			if tt.wantErr {
 				assert.Error(t, err)
 
@@ -250,18 +250,19 @@ func TestClient_SetChain(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 100*time.Millisecond)
 	defer cancel()
 
-	_, err = c.GetQueuedTransactions(ctx, "0x123")
+	_, err = c.GetQueuedTransactions(ctx, "0x123", 0)
 	assert.Error(t, err)
 }
 
 func TestClient_URLConstruction(t *testing.T) {
 	chain := "eth"
 	safeAddress := "0x123"
+	minNonce := int64(5)
 
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		expectedPath := fmt.Sprintf("/tx-service/%s/api/v1/safes/%s/multisig-transactions/", chain, safeAddress)
+		expectedPath := fmt.Sprintf("/tx-service/%s/api/v2/safes/%s/multisig-transactions/", chain, safeAddress)
 		assert.Equal(t, expectedPath, r.URL.Path)
-		assert.Equal(t, "executed=false", r.URL.RawQuery)
+		assert.Equal(t, fmt.Sprintf("executed=false&nonce__gte=%d", minNonce), r.URL.RawQuery)
 
 		err := json.NewEncoder(w).Encode(&safe.MultisigTransactionsResponse{})
 		require.NoError(t, err)
@@ -275,7 +276,7 @@ func TestClient_URLConstruction(t *testing.T) {
 	require.NoError(t, err)
 
 	c.SetChain(chain)
-	_, err = c.GetQueuedTransactions(context.Background(), safeAddress)
+	_, err = c.GetQueuedTransactions(context.Background(), safeAddress, minNonce)
 	require.NoError(t, err)
 }
 
@@ -290,13 +291,13 @@ func TestClient_RequestMetrics(t *testing.T) {
 		{
 			name:       "success request",
 			chain:      "eth",
-			path:       "/tx-service/eth/api/v1/safes/0x123/multisig-transactions/",
+			path:       "/tx-service/eth/api/v2/safes/0x123/multisig-transactions/",
 			statusCode: http.StatusOK,
 		},
 		{
 			name:        "error request",
 			chain:       "eth",
-			path:        "/tx-service/eth/api/v1/safes/0x123/multisig-transactions/",
+			path:        "/tx-service/eth/api/v2/safes/0x123/multisig-transactions/",
 			statusCode:  http.StatusInternalServerError,
 			shouldError: true,
 		},
@@ -315,7 +316,7 @@ func TestClient_RequestMetrics(t *testing.T) {
 			c := setupTestClient(t, server)
 			c.SetChain(tt.chain)
 
-			_, err := c.GetQueuedTransactions(context.Background(), "0x123")
+			_, err := c.GetQueuedTransactions(context.Background(), "0x123", 0)
 			if tt.shouldError {
 				assert.Error(t, err)
 			} else {
@@ -361,7 +362,7 @@ func TestClient_InvalidResponses(t *testing.T) {
 			c := setupTestClient(t, server)
 			c.SetChain("eth")
 
-			_, err := c.GetQueuedTransactions(context.Background(), "0x123")
+			_, err := c.GetQueuedTransactions(context.Background(), "0x123", 0)
 			if tt.wantErr {
 				assert.Error(t, err)
 			} else {
@@ -385,7 +386,7 @@ func TestClient_ContextCancellation(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 50*time.Millisecond)
 	defer cancel()
 
-	_, err := c.GetQueuedTransactions(ctx, "0x123")
+	_, err := c.GetQueuedTransactions(ctx, "0x123", 0)
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), context.DeadlineExceeded.Error())
 }
@@ -409,7 +410,7 @@ func TestClient_ParallelRequests(t *testing.T) {
 		fn := func() {
 			defer wg.Done()
 
-			_, err := c.GetQueuedTransactions(context.Background(), "0x123")
+			_, err := c.GetQueuedTransactions(context.Background(), "0x123", 0)
 			assert.NoError(t, err)
 		}
 
@@ -524,7 +525,7 @@ func TestClient_AuthorizationHeader(t *testing.T) {
 
 	c.SetChain("eth")
 
-	_, err = c.GetQueuedTransactions(context.Background(), "0x123")
+	_, err = c.GetQueuedTransactions(context.Background(), "0x123", 0)
 	require.NoError(t, err)
 }
 
@@ -568,7 +569,7 @@ func TestClient_RateLimitRetry(t *testing.T) {
 
 	c.SetChain("eth")
 
-	resp, err := c.GetQueuedTransactions(context.Background(), "0x123")
+	resp, err := c.GetQueuedTransactions(context.Background(), "0x123", 0)
 	require.NoError(t, err)
 	assert.Equal(t, 1, resp.Count)
 	assert.Equal(t, "0xabc", resp.Results[0].SafeTxHash)
@@ -597,7 +598,7 @@ func TestClient_RateLimitRetry_ContextCancellation(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 100*time.Millisecond)
 	defer cancel()
 
-	_, err = c.GetQueuedTransactions(ctx, "0x123")
+	_, err = c.GetQueuedTransactions(ctx, "0x123", 0)
 	assert.Error(t, err)
 	assert.ErrorIs(t, err, context.DeadlineExceeded)
 }
@@ -624,7 +625,7 @@ func TestClient_RateLimitRetry_DefaultDelay(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 500*time.Millisecond)
 	defer cancel()
 
-	_, err = c.GetQueuedTransactions(ctx, "0x123")
+	_, err = c.GetQueuedTransactions(ctx, "0x123", 0)
 	assert.Error(t, err)
 	assert.ErrorIs(t, err, context.DeadlineExceeded)
 }

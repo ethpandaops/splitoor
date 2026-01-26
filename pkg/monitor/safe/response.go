@@ -11,7 +11,7 @@ type MultisigTransactionsResponse struct {
 	CountUniqueNonce int                   `json:"countUniqueNonce"`
 }
 
-// MultisigTransaction represents a multisig transaction from the Transaction Service API.
+// MultisigTransaction represents a multisig transaction from the Transaction Service API v2.
 // Used for both list and detail endpoints.
 type MultisigTransaction struct {
 	Safe                  string         `json:"safe"`
@@ -20,7 +20,7 @@ type MultisigTransaction struct {
 	Data                  *string        `json:"data"`
 	Operation             int            `json:"operation"`
 	SafeTxHash            string         `json:"safeTxHash"`
-	Nonce                 int            `json:"nonce"`
+	Nonce                 int64          `json:"nonce,string"`
 	SubmissionDate        string         `json:"submissionDate"`
 	IsExecuted            bool           `json:"isExecuted"`
 	ConfirmationsRequired int            `json:"confirmationsRequired"`
