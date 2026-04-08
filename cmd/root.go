@@ -7,9 +7,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
-var (
-	log = logrus.New()
-)
+var log = logrus.New()
 
 // rootCmd represents the base command when called without any subcommands.
 var rootCmd = &cobra.Command{
@@ -28,5 +26,4 @@ func Execute() {
 }
 
 func initCommon() {
-
 }

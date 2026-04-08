@@ -93,9 +93,9 @@ func encodeUint32ArrayPadded(arr []uint32) []byte {
 func encodeUint32Padded(value uint32) []byte {
 	b := make([]byte, 32)
 	b[28] = byte(value >> 24)
-	b[29] = byte(value >> 16)
-	b[30] = byte(value >> 8)
-	b[31] = byte(value)
+	b[29] = byte(value >> 16) //nolint:gosec // intentional byte extraction
+	b[30] = byte(value >> 8)  //nolint:gosec // intentional truncation to extract byte
+	b[31] = byte(value)       //nolint:gosec // intentional truncation to extract byte
 
 	return b
 }
@@ -103,9 +103,9 @@ func encodeUint32Padded(value uint32) []byte {
 func encodeUint32NoPad(value uint32) []byte {
 	b := make([]byte, 4)
 	b[0] = byte(value >> 24)
-	b[1] = byte(value >> 16)
-	b[2] = byte(value >> 8)
-	b[3] = byte(value)
+	b[1] = byte(value >> 16) //nolint:gosec // intentional truncation to extract byte
+	b[2] = byte(value >> 8)  //nolint:gosec // intentional truncation to extract byte
+	b[3] = byte(value)       //nolint:gosec // intentional truncation to extract byte
 
 	return b
 }

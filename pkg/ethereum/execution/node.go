@@ -97,8 +97,8 @@ func (n *Node) Start(ctx context.Context) error {
 
 			n.log.WithField("service", service.Name()).Info("Starting service")
 
-			if err := service.Start(ctx); err != nil {
-				errs <- fmt.Errorf("failed to start service: %w", err)
+			if startErr := service.Start(ctx); startErr != nil {
+				errs <- fmt.Errorf("failed to start service: %w", startErr)
 			}
 
 			wg.Wait()
@@ -107,8 +107,8 @@ func (n *Node) Start(ctx context.Context) error {
 		n.log.Info("All services are ready")
 
 		for _, callback := range n.onReadyCallbacks {
-			if err := callback(ctx); err != nil {
-				errs <- fmt.Errorf("failed to run on ready callback: %w", err)
+			if cbErr := callback(ctx); cbErr != nil {
+				errs <- fmt.Errorf("failed to run on ready callback: %w", cbErr)
 			}
 		}
 	}()

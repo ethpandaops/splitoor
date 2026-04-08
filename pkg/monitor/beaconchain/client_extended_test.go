@@ -41,7 +41,7 @@ func TestGetValidatorsSafetyChecks(t *testing.T) {
 
 	// Test with a nil Data field in response
 	validators, err := client.GetValidators(context.Background(), []string{"0x123"})
-	assert.NoError(t, err, "Should handle nil Data field without error")
+	require.NoError(t, err, "Should handle nil Data field without error")
 	assert.Empty(t, validators, "Should return empty map when Data is nil")
 
 	// Create a test server that returns a response with empty data array
@@ -59,7 +59,7 @@ func TestGetValidatorsSafetyChecks(t *testing.T) {
 
 	// Test with empty Data array
 	validators, err = client.GetValidators(context.Background(), []string{"0x123"})
-	assert.NoError(t, err, "Should handle empty Data array without error")
+	require.NoError(t, err, "Should handle empty Data array without error")
 	assert.Empty(t, validators, "Should return empty map when Data is empty")
 
 	// Create a test server that returns validators with nil entries
@@ -74,7 +74,7 @@ func TestGetValidatorsSafetyChecks(t *testing.T) {
 
 	// Test with Data array containing nil entries
 	validators, err = client.GetValidators(context.Background(), []string{"0x123"})
-	assert.NoError(t, err, "Should handle nil entries in Data array")
+	require.NoError(t, err, "Should handle nil entries in Data array")
 	assert.Len(t, validators, 1, "Should filter out nil validators")
 	assert.Contains(t, validators, "0x123", "Should contain the valid validator")
 }
@@ -102,7 +102,7 @@ func TestGetValidatorSafetyChecks(t *testing.T) {
 
 	// Test with a malformed response that can't be unmarshaled
 	_, err = client.GetValidator(context.Background(), "0x123")
-	assert.Error(t, err, "Should handle malformed response with error")
+	require.Error(t, err, "Should handle malformed response with error")
 
 	// Create a test server that returns an error status
 	server2 := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -119,7 +119,7 @@ func TestGetValidatorSafetyChecks(t *testing.T) {
 
 	// Test with error status
 	_, err = client.GetValidator(context.Background(), "0x123")
-	assert.Error(t, err, "Should handle error status with error")
+	require.Error(t, err, "Should handle error status with error")
 	assert.Contains(t, err.Error(), "error response from server")
 }
 
@@ -145,7 +145,7 @@ func TestRequestHandlingSafetyChecks(t *testing.T) {
 
 	// Test with non-200 status code
 	_, err = client.GetValidator(context.Background(), "0x123")
-	assert.Error(t, err, "Should handle non-200 status code with error")
+	require.Error(t, err, "Should handle non-200 status code with error")
 	assert.Contains(t, err.Error(), "status code")
 
 	// Test context cancellation
@@ -153,7 +153,7 @@ func TestRequestHandlingSafetyChecks(t *testing.T) {
 	cancel() // Cancel immediately
 
 	_, err = client.GetValidator(ctx, "0x123")
-	assert.Error(t, err, "Should handle cancelled context with error")
+	require.Error(t, err, "Should handle cancelled context with error")
 
 	// Test context timeout
 	ctx, cancel = context.WithTimeout(context.Background(), 1*time.Nanosecond)
@@ -162,7 +162,7 @@ func TestRequestHandlingSafetyChecks(t *testing.T) {
 	time.Sleep(10 * time.Millisecond)
 
 	_, err = client.GetValidator(ctx, "0x123")
-	assert.Error(t, err, "Should handle context timeout with error")
+	require.Error(t, err, "Should handle context timeout with error")
 }
 
 // Tests for the public interface methods.

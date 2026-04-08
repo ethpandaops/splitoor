@@ -1,10 +1,11 @@
 package notifier
 
 import (
-	"fmt"
+	"errors"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 // This test is for raw_message.go which is imported from the same package
@@ -34,7 +35,7 @@ func TestRawMessageUnmarshal(t *testing.T) {
 				return nil
 			}
 
-			return fmt.Errorf("unsupported type")
+			return errors.New("unsupported type")
 		},
 	}
 
@@ -42,7 +43,7 @@ func TestRawMessageUnmarshal(t *testing.T) {
 	var result TestStruct
 
 	err := rawMsg.Unmarshal(&result)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	// Verify the result
 	assert.Equal(t, testStruct.Name, result.Name)
@@ -53,7 +54,7 @@ func TestRawMessageUnmarshalError(t *testing.T) {
 	// Create a RawMessage with error-returning unmarshal function
 	rawMsg := &RawMessage{
 		unmarshal: func(v any) error {
-			return fmt.Errorf("mock unmarshal error")
+			return errors.New("mock unmarshal error")
 		},
 	}
 
@@ -61,7 +62,7 @@ func TestRawMessageUnmarshalError(t *testing.T) {
 	var result TestStruct
 
 	err := rawMsg.Unmarshal(&result)
-	assert.Error(t, err)
+	require.Error(t, err)
 	assert.Contains(t, err.Error(), "mock unmarshal error")
 }
 
@@ -94,7 +95,7 @@ func TestRawMessageYAMLUnmarshal(t *testing.T) {
 
 	// Call UnmarshalYAML
 	err := rawMsg.UnmarshalYAML(mockUnmarshal)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	// Verify the unmarshal function was set
 	assert.NotNil(t, rawMsg.unmarshal)
@@ -103,6 +104,6 @@ func TestRawMessageYAMLUnmarshal(t *testing.T) {
 	var result TestStruct
 
 	err = rawMsg.Unmarshal(&result)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.True(t, called, "The unmarshal function should have been called")
 }

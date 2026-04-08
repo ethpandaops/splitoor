@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"strconv"
 	"strings"
 	"time"
 )
@@ -13,7 +14,7 @@ import (
 func (c *client) get(ctx context.Context, path, url string) ([]byte, error) {
 	start := time.Now()
 
-	httpMethod := "GET"
+	httpMethod := http.MethodGet
 
 	c.metrics.ObserveRequest(httpMethod, path)
 
@@ -24,13 +25,13 @@ func (c *client) get(ctx context.Context, path, url string) ([]byte, error) {
 	defer func() {
 		rspCode := "none"
 		if rsp != nil {
-			rspCode = fmt.Sprintf("%d", rsp.StatusCode)
+			rspCode = strconv.Itoa(rsp.StatusCode)
 		}
 
 		c.metrics.ObserveResponse(httpMethod, path, rspCode, time.Since(start))
 	}()
 
-	req, err := http.NewRequestWithContext(ctx, "GET", url, http.NoBody)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, http.NoBody)
 	if err != nil {
 		return nil, err
 	}
@@ -72,11 +73,11 @@ func (c *client) getValidators(ctx context.Context, pubkeys []string) (*Response
 	// response can be a single or list of validators
 	// still returns OK if validators are not found
 	resp := new(Response[[]Validator])
-	if err := json.Unmarshal(data, resp); err != nil {
+	if unmarshalErr := json.Unmarshal(data, resp); unmarshalErr != nil {
 		// Try single validator response
 		singleResp := new(Response[Validator])
 		if err2 := json.Unmarshal(data, singleResp); err2 != nil {
-			return nil, err
+			return nil, unmarshalErr
 		}
 
 		// After calling new() and successfully unmarshaling, singleResp can't be nil
@@ -108,8 +109,8 @@ func (c *client) getValidator(ctx context.Context, pubkey string) (*Response[Val
 	}
 
 	resp := new(Response[Validator])
-	if err := json.Unmarshal(data, resp); err != nil {
-		return nil, err
+	if unmarshalErr := json.Unmarshal(data, resp); unmarshalErr != nil {
+		return nil, unmarshalErr
 	}
 
 	return resp, nil

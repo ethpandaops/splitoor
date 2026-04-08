@@ -1,6 +1,7 @@
 package ethereum
 
 import (
+	"errors"
 	"fmt"
 	"sync"
 
@@ -44,9 +45,10 @@ func GetMetricsInstance(namespace, monitor string) *Metrics {
 	// Try to register but don't panic if it fails (already registered)
 	if err := prometheus.Register(nodesTotal); err != nil {
 		// If it's already registered, try to find the existing one
-		if are, ok := err.(prometheus.AlreadyRegisteredError); ok {
+		var are prometheus.AlreadyRegisteredError
+		if errors.As(err, &are) {
 			// If we can recover the existing metric, use it
-			if existing, ok := are.ExistingCollector.(*prometheus.GaugeVec); ok {
+			if existing, isGauge := are.ExistingCollector.(*prometheus.GaugeVec); isGauge {
 				nodesTotal = existing
 			}
 		}

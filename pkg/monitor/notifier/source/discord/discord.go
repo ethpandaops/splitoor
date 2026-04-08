@@ -82,11 +82,11 @@ func (c *Discord) Publish(ctx context.Context, e event.Event) error {
 		description = fmt.Sprintf("%s\n\n[**Go to docs**](%s)", description, docURL)
 	}
 
-	message := map[string]interface{}{
+	message := map[string]any{
 		"username": "Splitoor",
-		"embeds": []map[string]interface{}{
+		"embeds": []map[string]any{
 			{
-				"title":       fmt.Sprintf("🚨 %s", e.GetTitle(c.includeMonitorName, c.includeGroupName)),
+				"title":       "🚨 " + e.GetTitle(c.includeMonitorName, c.includeGroupName),
 				"description": description,
 				"color":       16711680,
 			},
@@ -100,7 +100,7 @@ func (c *Discord) Publish(ctx context.Context, e event.Event) error {
 		return fmt.Errorf("failed to marshal discord message: %w", err)
 	}
 
-	req, err := http.NewRequest("POST", c.config.Webhook, bytes.NewBuffer(jsonData))
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, c.config.Webhook, bytes.NewBuffer(jsonData))
 	if err != nil {
 		errorType = "request_error"
 

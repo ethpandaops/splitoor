@@ -1,6 +1,6 @@
 module github.com/ethpandaops/splitoor
 
-go 1.25.1
+go 1.26.1
 
 replace github.com/attestantio/go-eth2-client => github.com/attestantio/go-eth2-client v0.26.1-0.20250721122214-dc2928832acc
 

@@ -2,7 +2,7 @@ package notifier
 
 import (
 	"context"
-	"fmt"
+	"errors"
 	"testing"
 	"time"
 
@@ -10,6 +10,7 @@ import (
 	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
+	"github.com/stretchr/testify/require"
 )
 
 // MockEvent implements the event.Event interface for testing.
@@ -107,7 +108,7 @@ func TestPublisherNilChecks(t *testing.T) {
 
 	// Test nil event
 	err := publisher.Publish(nil)
-	assert.Error(t, err)
+	require.Error(t, err)
 	assert.Contains(t, err.Error(), "cannot publish nil event")
 
 	// Test nil context using PublishWithContext
@@ -115,7 +116,7 @@ func TestPublisherNilChecks(t *testing.T) {
 	mockEvent.On("GetGroup").Return("test-group")
 	//nolint:staticcheck // Testing nil context handling
 	err = publisher.PublishWithContext(nil, mockEvent)
-	assert.Error(t, err)
+	require.Error(t, err)
 	assert.Contains(t, err.Error(), "cannot publish with nil context")
 }
 
@@ -147,7 +148,7 @@ func TestPublisherSourceGroupFiltering(t *testing.T) {
 
 	// The event should be filtered out based on group
 	err := publisher.Publish(mockEvent)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	mockSource.AssertNotCalled(t, "Publish", mock.Anything, mock.Anything)
 
 	// Create publisher with a source that has a matching group filter
@@ -164,7 +165,7 @@ func TestPublisherSourceGroupFiltering(t *testing.T) {
 
 	// The event should be published
 	err = publisher.Publish(mockEvent)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	mockSource.AssertCalled(t, "Publish", mock.Anything, mockEvent)
 }
 
@@ -190,7 +191,7 @@ func TestPublisherNilSource(t *testing.T) {
 
 	// The nil source should be skipped without error
 	err := publisher.Publish(mockEvent)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 }
 
 func TestPublisherContextCancellation(t *testing.T) {
@@ -226,7 +227,7 @@ func TestPublisherContextCancellation(t *testing.T) {
 
 	// The publish operation should fail due to context cancellation
 	err := publisher.PublishWithContext(ctx, mockEvent)
-	assert.Error(t, err)
+	require.Error(t, err)
 	assert.Contains(t, err.Error(), "context cancelled")
 }
 
@@ -239,7 +240,7 @@ func TestPublisherSourceError(t *testing.T) {
 	mockSource := new(MockSource)
 	mockSource.On("GetName").Return("error-source")
 
-	expectedErr := fmt.Errorf("publish error")
+	expectedErr := errors.New("publish error")
 	mockSource.On("Publish", mock.Anything, mock.Anything).Return(expectedErr)
 
 	// Setup mock event
@@ -259,7 +260,7 @@ func TestPublisherSourceError(t *testing.T) {
 
 	// The publish operation should return the source error
 	err := publisher.Publish(mockEvent)
-	assert.Error(t, err)
+	require.Error(t, err)
 	assert.Contains(t, err.Error(), "error publishing to source")
 }
 
@@ -299,13 +300,13 @@ func TestPublisherStartStop(t *testing.T) {
 	// Test Start
 	ctx := context.Background()
 	err := publisher.Start(ctx)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	mockSourceA.AssertCalled(t, "Start", ctx)
 	mockSourceB.AssertCalled(t, "Start", ctx)
 
 	// Test Stop
 	err = publisher.Stop(ctx)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	mockSourceA.AssertCalled(t, "Stop", ctx)
 	mockSourceB.AssertCalled(t, "Stop", ctx)
 }
@@ -317,7 +318,7 @@ func TestPublisherStartError(t *testing.T) {
 
 	// Create mock source that returns an error on Start
 	mockSource := new(MockSource)
-	expectedErr := fmt.Errorf("start error")
+	expectedErr := errors.New("start error")
 	mockSource.On("Start", mock.Anything).Return(expectedErr)
 
 	// Create publisher with the error-returning source
@@ -334,7 +335,7 @@ func TestPublisherStartError(t *testing.T) {
 	// The Start operation should return the source error
 	ctx := context.Background()
 	err := publisher.Start(ctx)
-	assert.Error(t, err)
+	require.Error(t, err)
 	assert.Equal(t, expectedErr, err)
 }
 
@@ -347,7 +348,7 @@ func TestPublisherStopError(t *testing.T) {
 	mockSource := new(MockSource)
 	mockSource.On("Start", mock.Anything).Return(nil)
 
-	expectedErr := fmt.Errorf("stop error")
+	expectedErr := errors.New("stop error")
 	mockSource.On("Stop", mock.Anything).Return(expectedErr)
 
 	// Create publisher with the error-returning source
@@ -364,10 +365,10 @@ func TestPublisherStopError(t *testing.T) {
 	// Start should succeed
 	ctx := context.Background()
 	err := publisher.Start(ctx)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	// The Stop operation should return the source error
 	err = publisher.Stop(ctx)
-	assert.Error(t, err)
+	require.Error(t, err)
 	assert.Equal(t, expectedErr, err)
 }

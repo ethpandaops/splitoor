@@ -73,7 +73,7 @@ func (v *WithdrawalCredentials) GetDescriptionText(includeMonitor, includeGroup 
 	sb.WriteString("\nPubkey: ")
 	sb.WriteString(v.Pubkey)
 	sb.WriteString("\nCode: 0x")
-	sb.WriteString(fmt.Sprintf("%02x", v.Code))
+	fmt.Fprintf(&sb, "%02x", v.Code)
 
 	return sb.String()
 }
@@ -102,7 +102,7 @@ func (v *WithdrawalCredentials) GetDescriptionMarkdown(includeMonitor, includeGr
 	sb.WriteString("`\n")
 
 	sb.WriteString("**Code:** `0x")
-	sb.WriteString(fmt.Sprintf("%02x", v.Code))
+	fmt.Fprintf(&sb, "%02x", v.Code)
 	sb.WriteString("`")
 
 	return sb.String()
@@ -132,7 +132,7 @@ func (v *WithdrawalCredentials) GetDescriptionHTML(includeMonitor, includeGroup 
 	sb.WriteString("</p>")
 
 	sb.WriteString("<p><strong>Code:</strong> 0x")
-	sb.WriteString(fmt.Sprintf("%02x", v.Code))
+	fmt.Fprintf(&sb, "%02x", v.Code)
 	sb.WriteString("</p>")
 
 	return sb.String()

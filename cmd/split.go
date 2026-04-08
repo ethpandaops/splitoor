@@ -37,16 +37,17 @@ func getSplitDefaultContractAddress(ctx context.Context, dpNode *execution.Node)
 
 	return nil, fmt.Errorf("contract address is required (chain id: %s)", chainID.String())
 }
+
 func parseRecipients(accounts, percentageAllocations string) (recipients []string, allocations []uint32, err error) {
 	acc := strings.Split(accounts, ",")
 	alloc := strings.Split(percentageAllocations, ",")
 
 	if len(acc) < 2 {
-		return nil, nil, fmt.Errorf("must specify at least 2 recipients")
+		return nil, nil, errors.New("must specify at least 2 recipients")
 	}
 
 	if len(acc) != len(alloc) {
-		return nil, nil, fmt.Errorf("number of accounts and percentage allocations must match")
+		return nil, nil, errors.New("number of accounts and percentage allocations must match")
 	}
 
 	allocations = make([]uint32, 0)
@@ -54,9 +55,9 @@ func parseRecipients(accounts, percentageAllocations string) (recipients []strin
 	var total uint32
 
 	for _, v := range alloc {
-		val, err := strconv.ParseUint(v, 10, 32)
-		if err != nil {
-			return nil, nil, fmt.Errorf("invalid percentage allocation %s: %v", v, err)
+		val, parseErr := strconv.ParseUint(v, 10, 32)
+		if parseErr != nil {
+			return nil, nil, fmt.Errorf("invalid percentage allocation %s: %w", v, parseErr)
 		}
 
 		allocation := uint32(val)

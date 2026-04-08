@@ -285,8 +285,8 @@ func (g *Group) checkController(ctx context.Context) {
 				"actual_controller":   *actualController,
 			}).Warn("Alerting controller mismatch")
 
-			if err := g.publisher.Publish(event.NewController(time.Now(), g.monitor, g.name, g.address, g.controller.Address(), *actualController)); err != nil {
-				g.log.WithError(err).WithFields(logrus.Fields{
+			if pubErr := g.publisher.Publish(event.NewController(time.Now(), g.monitor, g.name, g.address, g.controller.Address(), *actualController)); pubErr != nil {
+				g.log.WithError(pubErr).WithFields(logrus.Fields{
 					"split_address":       g.address,
 					"expected_controller": g.controller.Address(),
 					"actual_controller":   *actualController,
@@ -311,115 +311,100 @@ func (g *Group) checkHash(ctx context.Context) {
 
 		actualHashString := hex.EncodeToString(actualHash[:])
 
-		// Get previous hash values from alerts and clear previous metrics if hash has changed
-		previousHashUnknown := g.hashUnknownAlert.GetHash()
-		previousHashInitial := g.hashInitialAlert.GetHash()
-		previousHashRecovery := g.hashRecoveryAlert.GetHash()
+		g.clearStaleHashMetrics(node.Name(), actualHashString)
+		g.updateHashMetrics(node.Name(), actualHashString)
+		g.checkHashAlerts(actualHashString)
+	}
+}
 
-		if previousHashUnknown != "" && previousHashUnknown != actualHashString {
-			g.metrics.ClearHashStable([]string{g.name, node.Name(), g.address, g.stableHash, previousHashUnknown})
-			g.metrics.ClearHashInitial([]string{g.name, node.Name(), g.address, g.initialHash, previousHashUnknown})
-			g.metrics.ClearHashRecovery([]string{g.name, node.Name(), g.address, g.recoveryHash, previousHashUnknown})
-			g.metrics.ClearHashUnexpected([]string{g.name, node.Name(), g.address, previousHashUnknown})
+func (g *Group) clearStaleHashMetrics(nodeName, actualHash string) {
+	previousHashes := []string{
+		g.hashUnknownAlert.GetHash(),
+		g.hashInitialAlert.GetHash(),
+		g.hashRecoveryAlert.GetHash(),
+	}
+
+	seen := make(map[string]bool, len(previousHashes))
+
+	for _, prev := range previousHashes {
+		if prev == "" || prev == actualHash || seen[prev] {
+			continue
 		}
 
-		if previousHashInitial != previousHashUnknown && previousHashInitial != "" && previousHashInitial != actualHashString {
-			g.metrics.ClearHashStable([]string{g.name, node.Name(), g.address, g.stableHash, previousHashInitial})
-			g.metrics.ClearHashInitial([]string{g.name, node.Name(), g.address, g.initialHash, previousHashInitial})
-			g.metrics.ClearHashRecovery([]string{g.name, node.Name(), g.address, g.recoveryHash, previousHashInitial})
-			g.metrics.ClearHashUnexpected([]string{g.name, node.Name(), g.address, previousHashInitial})
+		seen[prev] = true
+
+		g.metrics.ClearHashStable([]string{g.name, nodeName, g.address, g.stableHash, prev})
+		g.metrics.ClearHashInitial([]string{g.name, nodeName, g.address, g.initialHash, prev})
+		g.metrics.ClearHashRecovery([]string{g.name, nodeName, g.address, g.recoveryHash, prev})
+		g.metrics.ClearHashUnexpected([]string{g.name, nodeName, g.address, prev})
+	}
+}
+
+func (g *Group) updateHashMetrics(nodeName, actualHash string) {
+	boolFloat := func(cond bool) float64 {
+		if cond {
+			return 1
 		}
 
-		if previousHashRecovery != previousHashUnknown && previousHashRecovery != previousHashInitial &&
-			previousHashRecovery != "" && previousHashRecovery != actualHashString {
-			g.metrics.ClearHashStable([]string{g.name, node.Name(), g.address, g.stableHash, previousHashRecovery})
-			g.metrics.ClearHashInitial([]string{g.name, node.Name(), g.address, g.initialHash, previousHashRecovery})
-			g.metrics.ClearHashRecovery([]string{g.name, node.Name(), g.address, g.recoveryHash, previousHashRecovery})
-			g.metrics.ClearHashUnexpected([]string{g.name, node.Name(), g.address, previousHashRecovery})
+		return 0
+	}
+
+	g.metrics.UpdateHashStable(boolFloat(actualHash == g.stableHash), []string{g.name, nodeName, g.address, g.stableHash, actualHash})
+	g.metrics.UpdateHashInitial(boolFloat(actualHash == g.initialHash), []string{g.name, nodeName, g.address, g.initialHash, actualHash})
+	g.metrics.UpdateHashRecovery(boolFloat(actualHash == g.recoveryHash), []string{g.name, nodeName, g.address, g.recoveryHash, actualHash})
+	g.metrics.UpdateHashUnexpected(boolFloat(actualHash != g.stableHash && actualHash != g.initialHash && actualHash != g.recoveryHash), []string{g.name, nodeName, g.address, actualHash})
+}
+
+func (g *Group) checkHashAlerts(actualHash string) {
+	if g.hashUnknownAlert.Update(actualHash) {
+		g.log.WithFields(logrus.Fields{
+			"split_address": g.address,
+			"expected_hash": g.stableHash,
+			"actual_hash":   actualHash,
+		}).Warn("Alerting stable hash unknown")
+
+		if pubErr := g.publisher.Publish(event.NewHashUnknownState(time.Now(), g.monitor, g.name, g.address, g.stableHash, actualHash)); pubErr != nil {
+			g.log.WithError(pubErr).Error("Error publishing hash unknown alert")
 		}
+	}
 
-		stableHashVal := float64(0)
-		if actualHashString == g.stableHash {
-			stableHashVal = 1
+	if g.hashInitialAlert.Update(actualHash) {
+		g.log.WithFields(logrus.Fields{
+			"split_address": g.address,
+			"expected_hash": g.initialHash,
+			"actual_hash":   actualHash,
+		}).Warn("Alerting in initial hash state")
+
+		if pubErr := g.publisher.Publish(event.NewHashInitialState(time.Now(), g.monitor, g.name, g.address, actualHash)); pubErr != nil {
+			g.log.WithError(pubErr).Error("Error publishing in initial hash state alert")
 		}
+	}
 
-		initialHashVal := float64(0)
-		if actualHashString == g.initialHash {
-			initialHashVal = 1
-		}
+	if g.hashRecoveryAlert.Update(actualHash) {
+		g.log.WithFields(logrus.Fields{
+			"split_address": g.address,
+			"expected_hash": g.recoveryHash,
+			"actual_hash":   actualHash,
+		}).Warn("Alerting in recovery hash state")
 
-		recoveryHashVal := float64(0)
-		if actualHashString == g.recoveryHash {
-			recoveryHashVal = 1
-		}
-
-		unexpectedHashVal := float64(0)
-		if actualHashString != g.stableHash && actualHashString != g.initialHash && actualHashString != g.recoveryHash {
-			unexpectedHashVal = 1
-		}
-
-		g.metrics.UpdateHashStable(stableHashVal, []string{g.name, node.Name(), g.address, g.stableHash, actualHashString})
-		g.metrics.UpdateHashInitial(initialHashVal, []string{g.name, node.Name(), g.address, g.initialHash, actualHashString})
-		g.metrics.UpdateHashRecovery(recoveryHashVal, []string{g.name, node.Name(), g.address, g.recoveryHash, actualHashString})
-		g.metrics.UpdateHashUnexpected(unexpectedHashVal, []string{g.name, node.Name(), g.address, actualHashString})
-
-		shouldAlertUnknown := g.hashUnknownAlert.Update(actualHashString)
-		if shouldAlertUnknown {
-			g.log.WithFields(logrus.Fields{
-				"split_address": g.address,
-				"expected_hash": g.stableHash,
-				"actual_hash":   actualHashString,
-			}).Warn("Alerting stable hash unknown")
-
-			if err := g.publisher.Publish(event.NewHashUnknownState(time.Now(), g.monitor, g.name, g.address, g.stableHash, actualHashString)); err != nil {
-				g.log.WithError(err).WithFields(logrus.Fields{
-					"split_address": g.address,
-					"expected_hash": g.stableHash,
-					"actual_hash":   actualHashString,
-				}).Error("Error publishing hash unknown alert")
-			}
-		}
-
-		shouldAlertInitial := g.hashInitialAlert.Update(actualHashString)
-		if shouldAlertInitial {
-			g.log.WithFields(logrus.Fields{
-				"split_address": g.address,
-				"expected_hash": g.initialHash,
-				"actual_hash":   actualHashString,
-			}).Warn("Alerting in initial hash state")
-
-			if err := g.publisher.Publish(event.NewHashInitialState(time.Now(), g.monitor, g.name, g.address, actualHashString)); err != nil {
-				g.log.WithError(err).WithFields(logrus.Fields{
-					"split_address": g.address,
-					"expected_hash": g.initialHash,
-					"actual_hash":   actualHashString,
-				}).Error("Error publishing in initial hash state alert")
-			}
-		}
-
-		shouldAlertRecovery := g.hashRecoveryAlert.Update(actualHashString)
-		if shouldAlertRecovery {
-			g.log.WithFields(logrus.Fields{
-				"split_address": g.address,
-				"expected_hash": g.recoveryHash,
-				"actual_hash":   actualHashString,
-			}).Warn("Alerting in recovery hash state")
-
-			if err := g.publisher.Publish(event.NewHashRecoveryState(time.Now(), g.monitor, g.name, g.address, actualHashString)); err != nil {
-				g.log.WithError(err).WithFields(logrus.Fields{
-					"split_address": g.address,
-					"expected_hash": g.recoveryHash,
-					"actual_hash":   actualHashString,
-				}).Error("Error publishing in recovery hash state alert")
-			}
+		if pubErr := g.publisher.Publish(event.NewHashRecoveryState(time.Now(), g.monitor, g.name, g.address, actualHash)); pubErr != nil {
+			g.log.WithError(pubErr).Error("Error publishing in recovery hash state alert")
 		}
 	}
 }
 
 func (g *Group) gatherMetrics(ctx context.Context) {
 	for _, node := range g.ethereumPool.GetHealthyExecutionNodes() {
+		if ctx.Err() != nil {
+			return
+		}
+
 		balance, err := node.BalanceAt(ctx, g.address)
 		if err != nil {
+			if ctx.Err() != nil {
+				return
+			}
+
 			g.log.WithError(err).WithField("node", node.Name()).Error("Error fetching balance")
 		}
 

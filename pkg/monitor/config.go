@@ -1,7 +1,7 @@
 package monitor
 
 import (
-	"fmt"
+	"errors"
 
 	"github.com/ethpandaops/splitoor/pkg/ethereum"
 	"github.com/ethpandaops/splitoor/pkg/monitor/beaconchain"
@@ -35,7 +35,7 @@ type Config struct {
 
 func (c *Config) Validate() error {
 	if c.Name == "" {
-		return fmt.Errorf("name is required")
+		return errors.New("name is required")
 	}
 
 	if err := c.Services.Validate(); err != nil {

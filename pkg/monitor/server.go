@@ -2,6 +2,7 @@ package monitor
 
 import (
 	"context"
+	"errors"
 	"net/http"
 	"os/signal"
 	"syscall"
@@ -92,7 +93,7 @@ func (s *Server) Start(ctx context.Context) error {
 	if s.config.PProfAddr != nil {
 		g.Go(func() error {
 			if err := s.startPProf(); err != nil {
-				if err != http.ErrServerClosed {
+				if !errors.Is(err, http.ErrServerClosed) {
 					return err
 				}
 			}
@@ -104,7 +105,7 @@ func (s *Server) Start(ctx context.Context) error {
 	if s.config.HealthCheckAddr != nil {
 		g.Go(func() error {
 			if err := s.startHealthCheck(); err != nil {
-				if err != http.ErrServerClosed {
+				if !errors.Is(err, http.ErrServerClosed) {
 					return err
 				}
 			}
@@ -133,7 +134,7 @@ func (s *Server) Start(ctx context.Context) error {
 		return s.stop(ctx)
 	})
 
-	if err := g.Wait(); err != context.Canceled {
+	if err := g.Wait(); !errors.Is(err, context.Canceled) {
 		return err
 	}
 

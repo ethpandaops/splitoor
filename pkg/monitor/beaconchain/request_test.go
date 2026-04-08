@@ -43,9 +43,9 @@ func TestGetRequest(t *testing.T) {
 
 	// Test successful GET request
 	data, err := client.get(context.Background(), "test", server.URL)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.NotNil(t, data)
-	assert.Equal(t, `{"status":"OK","data":{}}`, string(data))
+	assert.JSONEq(t, `{"status":"OK","data":{}}`, string(data))
 }
 
 func TestGetRequestErrors(t *testing.T) {
@@ -61,7 +61,7 @@ func TestGetRequestErrors(t *testing.T) {
 
 	// Test network error
 	_, err := client.get(context.Background(), "test", "http://invalid-url-that-does-not-exist.example")
-	assert.Error(t, err)
+	require.Error(t, err)
 
 	// Create a test server that returns a non-200 status
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -74,7 +74,7 @@ func TestGetRequestErrors(t *testing.T) {
 
 	// Test non-200 status code
 	_, err = client.get(context.Background(), "test", server.URL)
-	assert.Error(t, err)
+	require.Error(t, err)
 	assert.Contains(t, err.Error(), "status code: 400")
 
 	// Create a server that times out
@@ -90,7 +90,7 @@ func TestGetRequestErrors(t *testing.T) {
 	defer cancel()
 
 	_, err = client.get(ctx, "test", server.URL)
-	assert.Error(t, err)
+	require.Error(t, err)
 }
 
 func TestGetValidatorsRequest(t *testing.T) {
@@ -132,7 +132,7 @@ func TestGetValidatorsRequest(t *testing.T) {
 
 	// Test getValidators with multiple pubkeys
 	resp, err := client.getValidators(context.Background(), []string{"0x123", "0x456"})
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, "OK", resp.Status)
 	assert.Len(t, resp.Data, 2)
 	assert.Equal(t, "0x123", resp.Data[0].Pubkey)
@@ -166,7 +166,7 @@ func TestGetValidatorsSingleResponse(t *testing.T) {
 
 	// Test getValidators with response that's a single validator
 	resp, err := client.getValidators(context.Background(), []string{"0x123"})
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, "OK", resp.Status)
 	assert.Len(t, resp.Data, 1)
 	assert.Equal(t, "0x123", resp.Data[0].Pubkey)
@@ -195,7 +195,7 @@ func TestGetValidatorsErrorResponse(t *testing.T) {
 
 	// GetValidators should return the error status
 	_, err := client.GetValidators(context.Background(), []string{"0x123"})
-	assert.Error(t, err)
+	require.Error(t, err)
 	assert.Contains(t, err.Error(), "error response from server")
 }
 
@@ -254,5 +254,5 @@ func TestGetValidatorRequestInvalidJSON(t *testing.T) {
 
 	// Test getValidator with invalid JSON
 	_, err := client.getValidator(context.Background(), "0x123")
-	assert.Error(t, err)
+	require.Error(t, err)
 }

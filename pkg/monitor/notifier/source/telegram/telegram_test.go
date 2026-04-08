@@ -10,6 +10,7 @@ import (
 	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
+	"github.com/stretchr/testify/require"
 )
 
 const SourceType = "telegram"
@@ -112,7 +113,7 @@ func TestNewTelegram(t *testing.T) {
 
 			if tt.expectError {
 				telegram, err := tel.NewTelegram(context.Background(), entry.WithField("source", "telegram"), tt.monitor, tt.name, nil, true, true, tt.config)
-				assert.Error(t, err)
+				require.Error(t, err)
 				assert.Nil(t, telegram)
 
 				return
@@ -120,7 +121,7 @@ func TestNewTelegram(t *testing.T) {
 
 			mockBot := setupMockBot()
 			telegram, err := tel.NewTelegramWithClient(entry.WithField("source", "telegram"), tt.monitor, tt.name, nil, true, true, tt.config, mockBot)
-			assert.NoError(t, err)
+			require.NoError(t, err)
 			assert.NotNil(t, telegram)
 			assert.Equal(t, tt.name, telegram.GetName())
 			assert.NotNil(t, telegram.GetConfig())
@@ -158,11 +159,11 @@ func TestTelegramPublish(t *testing.T) {
 		BotToken: "test-token",
 		ChatID:   "123456789",
 	}, mockBot)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	// Test Publish
 	err = telegram.Publish(context.Background(), mockEvent)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	mockBot.AssertExpectations(t)
 	mockEvent.AssertExpectations(t)
@@ -177,13 +178,13 @@ func TestTelegramStartStop(t *testing.T) {
 		BotToken: "test-token",
 		ChatID:   "123456789",
 	}, mockBot)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	err = telegram.Start(context.Background())
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	err = telegram.Stop(context.Background())
-	assert.NoError(t, err)
+	require.NoError(t, err)
 }
 
 func TestTelegramGetTypeAndName(t *testing.T) {
@@ -195,7 +196,7 @@ func TestTelegramGetTypeAndName(t *testing.T) {
 		BotToken: "test-token",
 		ChatID:   "123456789",
 	}, mockBot)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	assert.Equal(t, SourceType, telegram.GetType())
 	assert.Equal(t, "test_source", telegram.GetName())

@@ -22,80 +22,54 @@ type Source interface {
 	Publish(ctx context.Context, e event.Event) error
 }
 
+type configValidator interface {
+	Validate() error
+}
+
+func initConfig[T configValidator](config *RawMessage, conf T) error {
+	if config != nil {
+		if err := config.Unmarshal(conf); err != nil {
+			return err
+		}
+	}
+
+	if err := defaults.Set(conf); err != nil {
+		return err
+	}
+
+	return conf.Validate()
+}
+
 func NewSource(ctx context.Context, log logrus.FieldLogger, monitor, sourceName string, docs *string, sourceType SourceType, includeMonitorName, includeGroupName bool, config *RawMessage) (Source, error) {
 	if sourceType == SourceTypeUnknown {
 		return nil, errors.New("source type is required")
 	}
 
-	switch sourceType {
+	switch sourceType { //nolint:exhaustive // SourceTypeUnknown is handled above
 	case SourceTypeDiscord:
 		conf := &discord.Config{}
-
-		if config != nil {
-			if err := config.Unmarshal(conf); err != nil {
-				return nil, err
-			}
-		}
-
-		if err := defaults.Set(conf); err != nil {
-			return nil, err
-		}
-
-		if err := conf.Validate(); err != nil {
+		if err := initConfig(config, conf); err != nil {
 			return nil, err
 		}
 
 		return discord.NewDiscord(ctx, log, monitor, sourceName, docs, includeMonitorName, includeGroupName, conf)
 	case SourceTypeSMTP:
 		conf := &smtp.Config{}
-
-		if config != nil {
-			if err := config.Unmarshal(conf); err != nil {
-				return nil, err
-			}
-		}
-
-		if err := defaults.Set(conf); err != nil {
-			return nil, err
-		}
-
-		if err := conf.Validate(); err != nil {
+		if err := initConfig(config, conf); err != nil {
 			return nil, err
 		}
 
 		return smtp.NewSMTP(ctx, log, monitor, sourceName, docs, includeMonitorName, includeGroupName, conf)
 	case SourceTypeSES:
 		conf := &ses.Config{}
-
-		if config != nil {
-			if err := config.Unmarshal(conf); err != nil {
-				return nil, err
-			}
-		}
-
-		if err := defaults.Set(conf); err != nil {
-			return nil, err
-		}
-
-		if err := conf.Validate(); err != nil {
+		if err := initConfig(config, conf); err != nil {
 			return nil, err
 		}
 
 		return ses.NewSES(ctx, log, monitor, sourceName, docs, includeMonitorName, includeGroupName, conf)
 	case SourceTypeTelegram:
 		conf := &telegram.Config{}
-
-		if config != nil {
-			if err := config.Unmarshal(conf); err != nil {
-				return nil, err
-			}
-		}
-
-		if err := defaults.Set(conf); err != nil {
-			return nil, err
-		}
-
-		if err := conf.Validate(); err != nil {
+		if err := initConfig(config, conf); err != nil {
 			return nil, err
 		}
 

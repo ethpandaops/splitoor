@@ -127,13 +127,17 @@ func (c *Safe) tick(ctx context.Context) {
 
 	safeRsp, err := c.safeClient.GetSafe(ctx, c.address)
 	if err != nil {
+		if ctx.Err() != nil {
+			return
+		}
+
 		c.log.WithError(err).Error("failed to get safe")
 
 		return
 	}
 
 	// Check signers and threshold
-	c.checkSignersAndThreshold(ctx, safeRsp)
+	c.checkSignersAndThreshold(safeRsp)
 
 	// Get and process queued transactions
 	queuedTxData, err := c.getQueuedTransactions(ctx, safeRsp.Nonce)
@@ -142,14 +146,14 @@ func (c *Safe) tick(ctx context.Context) {
 	}
 
 	// Process alerts based on transaction data
-	c.processTransactionAlerts(ctx, queuedTxData)
+	c.processTransactionAlerts(queuedTxData)
 
 	// Update metrics based on transaction data
 	c.updateTransactionMetrics(queuedTxData)
 }
 
 // checkSignersAndThreshold verifies signers and threshold match expectations.
-func (c *Safe) checkSignersAndThreshold(ctx context.Context, safeRsp *safe.SafeResponse) {
+func (c *Safe) checkSignersAndThreshold(safeRsp *safe.SafeResponse) {
 	// Check signers
 	signersMatch := safeRsp.CheckSigners(c.signers)
 
@@ -191,7 +195,9 @@ type TransactionData struct {
 func (c *Safe) getQueuedTransactions(ctx context.Context, safeNonce int64) (*TransactionData, error) {
 	queued, err := c.safeClient.GetQueuedTransactions(ctx, c.address, safeNonce)
 	if err != nil {
-		c.log.WithError(err).Error("failed to get queued transactions")
+		if ctx.Err() == nil {
+			c.log.WithError(err).Error("failed to get queued transactions")
+		}
 
 		return nil, err
 	}
@@ -209,10 +215,10 @@ func (c *Safe) getQueuedTransactions(ctx context.Context, safeNonce int64) (*Tra
 	}
 
 	// Process transactions to find valid recovery transactions
-	if err := c.processTransactions(ctx, txData); err != nil {
-		c.log.WithError(err).Error("failed to process transactions")
+	if processErr := c.processTransactions(ctx, txData); processErr != nil {
+		c.log.WithError(processErr).Error("failed to process transactions")
 
-		return nil, err
+		return nil, processErr
 	}
 
 	return txData, nil
@@ -223,7 +229,9 @@ func (c *Safe) processTransactions(ctx context.Context, txData *TransactionData)
 	for i, tx := range txData.Transactions {
 		txDetails, err := c.safeClient.GetTransaction(ctx, tx.SafeTxHash)
 		if err != nil {
-			c.log.WithError(err).Error("failed to get recovery transaction details")
+			if ctx.Err() == nil {
+				c.log.WithError(err).Error("failed to get recovery transaction details")
+			}
 
 			return err
 		}
@@ -233,7 +241,7 @@ func (c *Safe) processTransactions(ctx context.Context, txData *TransactionData)
 				"safe_tx_hash": tx.SafeTxHash,
 			}).Warn("failed to get recovery transaction details")
 
-			return fmt.Errorf("failed to get recovery transaction details")
+			return errors.New("failed to get recovery transaction details")
 		}
 
 		if !c.isValidRecoveryTransaction(tx.SafeTxHash, txDetails) {
@@ -243,12 +251,12 @@ func (c *Safe) processTransactions(ctx context.Context, txData *TransactionData)
 		txData.RecoveryTxHash = tx.SafeTxHash
 		txData.InvalidRecoveryError = nil
 
-		if err := c.checkRecoveryParameters(txDetails); err != nil {
+		if checkErr := c.checkRecoveryParameters(txDetails); checkErr != nil {
 			c.log.WithFields(logrus.Fields{
 				"safe_tx_hash": tx.SafeTxHash,
-			}).WithError(err).Warn("invalid recovery transaction queued")
+			}).WithError(checkErr).Warn("invalid recovery transaction queued")
 
-			txData.InvalidRecoveryError = err
+			txData.InvalidRecoveryError = checkErr
 
 			continue
 		}
@@ -309,25 +317,25 @@ func (c *Safe) isValidRecoveryTransaction(safeTxHash string, txDetails *safe.Mul
 }
 
 // processTransactionAlerts processes various alerts based on transaction data.
-func (c *Safe) processTransactionAlerts(ctx context.Context, txData *TransactionData) {
+func (c *Safe) processTransactionAlerts(txData *TransactionData) {
 	// Check if queue size is too large
-	c.alertQueueExcess(ctx, len(txData.Transactions))
+	c.alertQueueExcess(len(txData.Transactions))
 
 	// Check for missing recovery transaction
-	c.alertMissingRecovery(ctx, txData.RecoveryTxHash)
+	c.alertMissingRecovery(txData.RecoveryTxHash)
 
 	// Check for invalid recovery transaction
-	c.alertInvalidRecovery(ctx, txData.RecoveryTxHash, txData.InvalidRecoveryError)
+	c.alertInvalidRecovery(txData.RecoveryTxHash, txData.InvalidRecoveryError)
 
 	// Check if recovery transaction is not next in queue
-	c.alertNotNextRecovery(ctx, txData)
+	c.alertNotNextRecovery(txData)
 
 	// Check confirmation status
-	c.alertConfirmationStatus(ctx, txData)
+	c.alertConfirmationStatus(txData)
 }
 
 // alertQueueExcess checks and alerts if queue size is too large.
-func (c *Safe) alertQueueExcess(ctx context.Context, queueSize int) {
+func (c *Safe) alertQueueExcess(queueSize int) {
 	shouldAlert := c.excessQueue.Update(queueSize)
 	if shouldAlert {
 		c.log.WithFields(logrus.Fields{
@@ -341,7 +349,7 @@ func (c *Safe) alertQueueExcess(ctx context.Context, queueSize int) {
 }
 
 // alertMissingRecovery checks and alerts if recovery transaction is missing.
-func (c *Safe) alertMissingRecovery(ctx context.Context, recoveryTx string) {
+func (c *Safe) alertMissingRecovery(recoveryTx string) {
 	shouldAlert := c.missing.Update(recoveryTx == "")
 	if shouldAlert {
 		c.log.Warn("Alerting recovery transaction missing")
@@ -353,7 +361,7 @@ func (c *Safe) alertMissingRecovery(ctx context.Context, recoveryTx string) {
 }
 
 // alertInvalidRecovery checks and alerts if recovery transaction is invalid.
-func (c *Safe) alertInvalidRecovery(ctx context.Context, recoveryTx string, invalidError error) {
+func (c *Safe) alertInvalidRecovery(recoveryTx string, invalidError error) {
 	shouldAlert := c.invalid.Update(invalidError)
 	if shouldAlert && invalidError != nil {
 		c.log.WithFields(logrus.Fields{
@@ -367,7 +375,7 @@ func (c *Safe) alertInvalidRecovery(ctx context.Context, recoveryTx string, inva
 }
 
 // alertNotNextRecovery checks and alerts if recovery transaction is not next in queue.
-func (c *Safe) alertNotNextRecovery(ctx context.Context, txData *TransactionData) {
+func (c *Safe) alertNotNextRecovery(txData *TransactionData) {
 	shouldAlert := c.next.Update(txData.RecoveryTxHash != "", txData.InvalidRecoveryError == nil, txData.HasNextRecoveryTx)
 	if shouldAlert {
 		c.log.WithFields(logrus.Fields{
@@ -381,7 +389,7 @@ func (c *Safe) alertNotNextRecovery(ctx context.Context, txData *TransactionData
 }
 
 // alertConfirmationStatus checks and alerts about confirmation status.
-func (c *Safe) alertConfirmationStatus(ctx context.Context, txData *TransactionData) {
+func (c *Safe) alertConfirmationStatus(txData *TransactionData) {
 	expectedConfirmations := txData.RequiredConfirmations - 1
 	// Handle special case where a safe multisig only requires 1 confirmation
 	if txData.RequiredConfirmations == 1 {
@@ -467,18 +475,18 @@ func (c *Safe) checkRecoveryParameters(tx *safe.MultisigTransaction) error {
 	}
 
 	// Validate array lengths
-	if err := c.validateArrayLengths(params.Accounts, params.Allocations); err != nil {
-		return err
+	if validateErr := c.validateArrayLengths(params.Accounts, params.Allocations); validateErr != nil {
+		return validateErr
 	}
 
 	// Validate accounts and allocations
-	if err := c.validateAccountsAndAllocations(params.Accounts, params.Allocations); err != nil {
-		return err
+	if validateErr := c.validateAccountsAndAllocations(params.Accounts, params.Allocations); validateErr != nil {
+		return validateErr
 	}
 
 	// Validate distributor fee
 	if params.DistributorFee != 0 {
-		return fmt.Errorf("distributor fee must be 0")
+		return errors.New("distributor fee must be 0")
 	}
 
 	return nil
@@ -488,15 +496,15 @@ func (c *Safe) checkRecoveryParameters(tx *safe.MultisigTransaction) error {
 func (c *Safe) validateTxBasics(tx *safe.MultisigTransaction) error {
 	// First, verify tx and its data are not nil
 	if tx == nil {
-		return fmt.Errorf("transaction details is nil")
+		return errors.New("transaction details is nil")
 	}
 
 	if tx.DataDecoded == nil {
-		return fmt.Errorf("transaction data decoded is nil")
+		return errors.New("transaction data decoded is nil")
 	}
 
 	if tx.DataDecoded.Parameters == nil {
-		return fmt.Errorf("transaction parameters are nil")
+		return errors.New("transaction parameters are nil")
 	}
 
 	return nil
@@ -548,9 +556,9 @@ func (c *Safe) parseSplitAddress(param safe.Parameter, result *TransactionParams
 
 // parseAccounts parses the accounts parameter.
 func (c *Safe) parseAccounts(param safe.Parameter, result *TransactionParams) error {
-	accountsIface, ok := param.Value.([]interface{})
+	accountsIface, ok := param.Value.([]any)
 	if !ok {
-		return fmt.Errorf("invalid accounts value: expected []interface{}, got %T (%v)", param.Value, param.Value)
+		return fmt.Errorf("invalid accounts value: expected []any, got %T (%v)", param.Value, param.Value)
 	}
 
 	result.Accounts = make([]string, len(accountsIface))
@@ -571,9 +579,9 @@ func (c *Safe) parseAccounts(param safe.Parameter, result *TransactionParams) er
 
 // parseAllocations parses the percentage allocations parameter.
 func (c *Safe) parseAllocations(param safe.Parameter, result *TransactionParams) error {
-	allocsIface, ok := param.Value.([]interface{})
+	allocsIface, ok := param.Value.([]any)
 	if !ok {
-		return fmt.Errorf("invalid percentAllocations value: expected []interface{}, got %T (%v)", param.Value, param.Value)
+		return fmt.Errorf("invalid percentAllocations value: expected []any, got %T (%v)", param.Value, param.Value)
 	}
 
 	result.Allocations = make([]uint32, len(allocsIface))
@@ -583,14 +591,14 @@ func (c *Safe) parseAllocations(param safe.Parameter, result *TransactionParams)
 			return fmt.Errorf("allocation at index %d is nil", i)
 		}
 
-		aStr, ok := a.(string)
-		if !ok {
+		aStr, aOk := a.(string)
+		if !aOk {
 			return fmt.Errorf("invalid allocation value type at index %d: expected string, got %T (%v)", i, a, a)
 		}
 
 		val, err := strconv.ParseUint(aStr, 10, 32)
 		if err != nil {
-			return fmt.Errorf("invalid allocation value at index %d: %v", i, err)
+			return fmt.Errorf("invalid allocation value at index %d: %w", i, err)
 		}
 
 		result.Allocations[i] = uint32(val)
@@ -608,7 +616,7 @@ func (c *Safe) parseDistributorFee(param safe.Parameter, result *TransactionPara
 
 	val, err := strconv.ParseUint(feeStr, 10, 32)
 	if err != nil {
-		return fmt.Errorf("invalid distributor fee value: %v", err)
+		return fmt.Errorf("invalid distributor fee value: %w", err)
 	}
 
 	result.DistributorFee = uint32(val)
@@ -620,11 +628,11 @@ func (c *Safe) parseDistributorFee(param safe.Parameter, result *TransactionPara
 func (c *Safe) validateArrayLengths(accounts []string, allocations []uint32) error {
 	// Check for nil slices
 	if c.recoveryAccounts == nil {
-		return fmt.Errorf("recovery accounts is nil")
+		return errors.New("recovery accounts is nil")
 	}
 
 	if c.recoveryAllocations == nil {
-		return fmt.Errorf("recovery allocations is nil")
+		return errors.New("recovery allocations is nil")
 	}
 
 	// Check array lengths match
@@ -676,8 +684,16 @@ func (c *Safe) validateAccountsAndAllocations(accounts []string, allocations []u
 
 func (c *Safe) gatherMetrics(ctx context.Context) {
 	for _, node := range c.ethereumPool.GetHealthyExecutionNodes() {
+		if ctx.Err() != nil {
+			return
+		}
+
 		balance, err := node.BalanceAt(ctx, c.address)
 		if err != nil {
+			if ctx.Err() != nil {
+				return
+			}
+
 			c.log.WithError(err).WithField("node", node.Name()).Error("Error fetching balance")
 		}
 

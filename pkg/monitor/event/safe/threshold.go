@@ -1,7 +1,7 @@
 package safe
 
 import (
-	"fmt"
+	"strconv"
 	"strings"
 	"time"
 )
@@ -76,10 +76,10 @@ func (v *Threshold) GetDescriptionText(includeMonitor, includeGroup bool) string
 	sb.WriteString(v.SafeAddress)
 
 	sb.WriteString("\nActual Threshold: ")
-	sb.WriteString(fmt.Sprintf("%d", v.ActualThreshold))
+	sb.WriteString(strconv.Itoa(v.ActualThreshold))
 
 	sb.WriteString("\nExpected Threshold: ")
-	sb.WriteString(fmt.Sprintf("%d", v.ExpectedThreshold))
+	sb.WriteString(strconv.Itoa(v.ExpectedThreshold))
 
 	return sb.String()
 }
@@ -108,11 +108,11 @@ func (v *Threshold) GetDescriptionMarkdown(includeMonitor, includeGroup bool) st
 	sb.WriteString("`\n")
 
 	sb.WriteString("**Actual Threshold:** ")
-	sb.WriteString(fmt.Sprintf("%d", v.ActualThreshold))
+	sb.WriteString(strconv.Itoa(v.ActualThreshold))
 	sb.WriteString("\n")
 
 	sb.WriteString("**Expected Threshold:** ")
-	sb.WriteString(fmt.Sprintf("%d", v.ExpectedThreshold))
+	sb.WriteString(strconv.Itoa(v.ExpectedThreshold))
 
 	return sb.String()
 }
@@ -141,11 +141,11 @@ func (v *Threshold) GetDescriptionHTML(includeMonitor, includeGroup bool) string
 	sb.WriteString("</p>")
 
 	sb.WriteString("<p><strong>Actual Threshold:</strong> ")
-	sb.WriteString(fmt.Sprintf("%d", v.ActualThreshold))
+	sb.WriteString(strconv.Itoa(v.ActualThreshold))
 	sb.WriteString("</p>")
 
 	sb.WriteString("<p><strong>Expected Threshold:</strong> ")
-	sb.WriteString(fmt.Sprintf("%d", v.ExpectedThreshold))
+	sb.WriteString(strconv.Itoa(v.ExpectedThreshold))
 	sb.WriteString("</p>")
 
 	return sb.String()

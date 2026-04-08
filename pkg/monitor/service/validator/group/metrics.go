@@ -101,7 +101,7 @@ func (m Metrics) UpdateTotalWithdrawals(total float64, labels []string) {
 func (m Metrics) UpdateStatus(status MetricsStatus, labels []string) {
 	var statusCode float64
 
-	switch status {
+	switch status { //nolint:exhaustive // MetricsStatusUnknown handled by default
 	case MetricsStatusMempool:
 		statusCode = 1
 	case MetricsStatusDeposited:

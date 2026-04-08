@@ -1,7 +1,7 @@
 package safe
 
 import (
-	"fmt"
+	"strconv"
 	"strings"
 	"time"
 )
@@ -74,7 +74,7 @@ func (v *TransactionQueueExcess) GetDescriptionText(includeMonitor, includeGroup
 	sb.WriteString(v.SafeAddress)
 
 	sb.WriteString("\nNumber of Transactions: ")
-	sb.WriteString(fmt.Sprintf("%d", v.NumTxs))
+	sb.WriteString(strconv.Itoa(v.NumTxs))
 
 	return sb.String()
 }
@@ -103,7 +103,7 @@ func (v *TransactionQueueExcess) GetDescriptionMarkdown(includeMonitor, includeG
 	sb.WriteString("`\n")
 
 	sb.WriteString("**Number of Transactions:** ")
-	sb.WriteString(fmt.Sprintf("%d", v.NumTxs))
+	sb.WriteString(strconv.Itoa(v.NumTxs))
 
 	return sb.String()
 }
@@ -132,7 +132,7 @@ func (v *TransactionQueueExcess) GetDescriptionHTML(includeMonitor, includeGroup
 	sb.WriteString("</p>")
 
 	sb.WriteString("<p><strong>Number of Transactions:</strong> ")
-	sb.WriteString(fmt.Sprintf("%d", v.NumTxs))
+	sb.WriteString(strconv.Itoa(v.NumTxs))
 	sb.WriteString("</p>")
 
 	return sb.String()

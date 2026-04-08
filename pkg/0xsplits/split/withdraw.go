@@ -2,7 +2,7 @@ package split
 
 import (
 	"context"
-	"fmt"
+	"errors"
 	"math/big"
 	"time"
 
@@ -20,7 +20,7 @@ type WithdrawParams struct {
 	Tokens      []string
 }
 
-func (w *WithdrawParams) encode() []interface{} {
+func (w *WithdrawParams) encode() []any {
 	withdrawETH := uint256.NewInt(0)
 	if w.WithdrawETH {
 		withdrawETH = uint256.NewInt(1)
@@ -31,7 +31,7 @@ func (w *WithdrawParams) encode() []interface{} {
 		tokens[i] = common.HexToAddress(w.Tokens[i])
 	}
 
-	return []interface{}{
+	return []any{
 		common.HexToAddress(w.Address),
 		withdrawETH.ToBig(),
 		tokens,
@@ -80,7 +80,7 @@ func (c *Client) Withdraw(ctx context.Context, node *execution.Node, contractABI
 	}
 
 	if receipt.Status == types.ReceiptStatusFailed {
-		return fmt.Errorf("transaction failed")
+		return errors.New("transaction failed")
 	}
 
 	return nil

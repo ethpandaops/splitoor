@@ -1,10 +1,9 @@
 package group
 
 import (
-	"fmt"
-
 	"github.com/ethpandaops/splitoor/pkg/monitor/service/split/group/account"
 	"github.com/ethpandaops/splitoor/pkg/monitor/service/split/group/controller"
+	"github.com/pkg/errors"
 )
 
 type Config struct {
@@ -22,15 +21,15 @@ func (c *Config) Validate() error {
 	}
 
 	if c.Name == "" {
-		return fmt.Errorf("name is required")
+		return errors.New("name is required")
 	}
 
 	if c.Address == "" {
-		return fmt.Errorf("address is required")
+		return errors.New("address is required")
 	}
 
 	if c.RecoveryAddress == "" {
-		return fmt.Errorf("recoveryAddress is required")
+		return errors.New("recoveryAddress is required")
 	}
 
 	totalAllocation := uint32(0)
@@ -44,7 +43,7 @@ func (c *Config) Validate() error {
 	}
 
 	if totalAllocation != 1000000 {
-		return fmt.Errorf("total allocation must be 1000000 (100%%)")
+		return errors.New("total allocation must be 1000000 (100%%)")
 	}
 
 	if err := c.Controller.Validate(); err != nil {

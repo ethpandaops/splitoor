@@ -1,7 +1,7 @@
 package account
 
 import (
-	"fmt"
+	"errors"
 )
 
 type Config struct {
@@ -13,23 +13,23 @@ type Config struct {
 
 func (c *Config) Validate() error {
 	if c == nil {
-		return fmt.Errorf("config is nil")
+		return errors.New("config is nil")
 	}
 
 	if c.Name == "" {
-		return fmt.Errorf("name is required")
+		return errors.New("name is required")
 	}
 
 	if c.Address == "" {
-		return fmt.Errorf("address is required")
+		return errors.New("address is required")
 	}
 
 	if c.Allocation <= 0 {
-		return fmt.Errorf("allocations must be greater than 0")
+		return errors.New("allocations must be greater than 0")
 	}
 
 	if c.Allocation > 999999 {
-		return fmt.Errorf("allocation must be less than 999999 (99.9999%%)")
+		return errors.New("allocation must be less than 999999 (99.9999%%)")
 	}
 
 	return nil

@@ -61,7 +61,7 @@ func TestPoolSafety(t *testing.T) {
 			// The actual implementation returns an empty (non-nil) slice
 			// which is the correct behavior, but we're actually testing that it doesn't panic
 			if execNodes != nil {
-				assert.Len(t, execNodes, 0)
+				assert.Empty(t, execNodes)
 			}
 
 			// This tests that the GetHealthyBeaconNodes doesn't panic with nil maps
@@ -69,7 +69,7 @@ func TestPoolSafety(t *testing.T) {
 			// The actual implementation returns an empty (non-nil) slice
 			// which is the correct behavior, but we're actually testing that it doesn't panic
 			if beaconNodes != nil {
-				assert.Len(t, beaconNodes, 0)
+				assert.Empty(t, beaconNodes)
 			}
 
 			// Test GetHealthyExecutionNode with nil maps
@@ -119,7 +119,7 @@ func TestPoolConcurrentAccess(t *testing.T) {
 	defer cancel()
 
 	// Run multiple goroutines that access the pool concurrently
-	for i := 0; i < 10; i++ {
+	for range 10 {
 		wg.Add(5)
 
 		// Test reader methods

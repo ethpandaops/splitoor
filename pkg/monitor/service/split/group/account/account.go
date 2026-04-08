@@ -8,6 +8,7 @@ import (
 	"github.com/0xsequence/ethkit/ethcoder"
 	spl "github.com/ethpandaops/splitoor/pkg/0xsplits/split"
 	"github.com/ethpandaops/splitoor/pkg/ethereum"
+	"github.com/ethpandaops/splitoor/pkg/ethereum/execution"
 	"github.com/sirupsen/logrus"
 )
 
@@ -83,38 +84,58 @@ func (a *Account) Allocation() uint32 {
 
 func (a *Account) tick(ctx context.Context) {
 	for _, node := range a.ethereumPool.GetHealthyExecutionNodes() {
-		balance, err := node.BalanceAt(ctx, a.address)
-		if err != nil {
-			a.log.WithError(err).WithField("node", node.Name()).Error("Error fetching balance")
+		if ctx.Err() != nil {
+			return
 		}
 
-		if balance == nil {
-			a.log.WithField("node", node.Name()).Error("Balance is nil")
-
-			continue
-		}
-
-		balanceFloat := new(big.Float).SetInt(balance)
-		balanceFloat64, _ := balanceFloat.Float64()
-
-		a.metrics.UpdateBalance(balanceFloat64, []string{a.name, node.Name(), a.address})
-
-		if a.client != nil && a.contract != nil {
-			balance, err := a.client.GetETHBalance(ctx, node, a.contract, a.address)
-			if err != nil {
-				a.log.WithError(err).WithField("node", node.Name()).Error("Error fetching split account balance")
+		if err := a.gatherNodeMetrics(ctx, node); err != nil {
+			if ctx.Err() != nil {
+				return
 			}
-
-			if balance == nil {
-				a.log.WithField("node", node.Name()).Error("Split account balance is nil")
-
-				continue
-			}
-
-			splitBalanceFloat := new(big.Float).SetInt(balance)
-			splitBalanceFloat64, _ := splitBalanceFloat.Float64()
-
-			a.metrics.UpdateSplitBalance(splitBalanceFloat64, []string{a.name, node.Name(), a.address})
 		}
 	}
+}
+
+func (a *Account) gatherNodeMetrics(ctx context.Context, node *execution.Node) error {
+	balance, err := node.BalanceAt(ctx, a.address)
+	if err != nil {
+		a.log.WithError(err).WithField("node", node.Name()).Error("Error fetching balance")
+
+		return err
+	}
+
+	if balance == nil {
+		a.log.WithField("node", node.Name()).Error("Balance is nil")
+
+		return nil
+	}
+
+	balanceFloat := new(big.Float).SetInt(balance)
+	balanceFloat64, _ := balanceFloat.Float64()
+
+	a.metrics.UpdateBalance(balanceFloat64, []string{a.name, node.Name(), a.address})
+
+	if a.client == nil || a.contract == nil {
+		return nil
+	}
+
+	splitBalance, err := a.client.GetETHBalance(ctx, node, a.contract, a.address)
+	if err != nil {
+		a.log.WithError(err).WithField("node", node.Name()).Error("Error fetching split account balance")
+
+		return err
+	}
+
+	if splitBalance == nil {
+		a.log.WithField("node", node.Name()).Error("Split account balance is nil")
+
+		return nil
+	}
+
+	splitBalanceFloat := new(big.Float).SetInt(splitBalance)
+	splitBalanceFloat64, _ := splitBalanceFloat.Float64()
+
+	a.metrics.UpdateSplitBalance(splitBalanceFloat64, []string{a.name, node.Name(), a.address})
+
+	return nil
 }
