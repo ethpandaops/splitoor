@@ -7,6 +7,7 @@ import (
 
 	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 const (
@@ -26,7 +27,7 @@ func TestNewSourceInvalidType(t *testing.T) {
 
 	// Should return error for unknown source type
 	_, err := NewSource(ctx, log, testMonitorName, testSourceName, nil, sourceType, includeMonitorName, includeGroupName, nil)
-	assert.Error(t, err)
+	require.Error(t, err)
 	assert.Contains(t, err.Error(), "source type is required")
 }
 
@@ -42,7 +43,7 @@ func TestNewSourceUnsupportedType(t *testing.T) {
 
 	// Should return error for unsupported source type
 	_, err := NewSource(ctx, log, testMonitorName, testSourceName, nil, sourceType, includeMonitorName, includeGroupName, nil)
-	assert.Error(t, err)
+	require.Error(t, err)
 	assert.Contains(t, err.Error(), "source type is not supported")
 }
 
@@ -65,7 +66,7 @@ func TestNewSourceConfigUnmarshalError(t *testing.T) {
 
 	// Should return error when config can't be unmarshalled
 	_, err := NewSource(ctx, log, testMonitorName, testSourceName, nil, sourceType, includeMonitorName, includeGroupName, mockRawMsg)
-	assert.Error(t, err)
+	require.Error(t, err)
 	assert.Contains(t, err.Error(), "mock unmarshal error")
 }
 
@@ -77,7 +78,7 @@ func TestConfigValidate(t *testing.T) {
 		Name:       "test",
 	}
 	err := config.Validate()
-	assert.Error(t, err)
+	require.Error(t, err)
 	assert.Contains(t, err.Error(), "notifier source type is required")
 
 	// Test with valid source type
@@ -86,7 +87,7 @@ func TestConfigValidate(t *testing.T) {
 		Name:       "test",
 	}
 	err = config.Validate()
-	assert.NoError(t, err)
+	require.NoError(t, err)
 }
 
 // Test RawMessage.
@@ -104,7 +105,7 @@ func TestRawMessageUnmarshal(t *testing.T) {
 
 	// Call Unmarshal
 	err := rawMsg.Unmarshal(nil)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.True(t, called, "Unmarshal function should have been called")
 
 	// Test with a failing unmarshal function
@@ -116,7 +117,7 @@ func TestRawMessageUnmarshal(t *testing.T) {
 	}
 
 	err = rawMsg.Unmarshal(nil)
-	assert.Error(t, err)
+	require.Error(t, err)
 	assert.Equal(t, expectedErr, err)
 }
 
@@ -131,14 +132,14 @@ func TestRawMessageUnmarshalYAML(t *testing.T) {
 
 	// Call UnmarshalYAML
 	err := rawMsg.UnmarshalYAML(mockUnmarshal)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	// Verify that the unmarshal function was set
 	assert.NotNil(t, rawMsg.unmarshal)
 
 	// Call Unmarshal to verify it uses the set function
 	err = rawMsg.Unmarshal(nil)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 }
 
 func TestRawMessageNilUnmarshal(t *testing.T) {

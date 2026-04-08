@@ -77,7 +77,7 @@ func (s *SMTP) Publish(ctx context.Context, evt event.Event) error {
 		description = fmt.Sprintf("%s\n\nGo to docs: %s", description, docURL)
 	}
 
-	if err := s.sendEmail(evt, fmt.Sprintf("🚨 %s", evt.GetTitle(s.includeMonitorName, s.includeGroupName)), description); err != nil {
+	if err := s.sendEmail(evt, "🚨 "+evt.GetTitle(s.includeMonitorName, s.includeGroupName), description); err != nil {
 		return err
 	}
 
@@ -105,73 +105,69 @@ func (s *SMTP) sendEmail(evt event.Event, subject, body string) error {
 
 	s.log.WithField("tls", s.config.TLS).Info("Sending email")
 
-	if s.config.TLS {
-		tlsConfig := &tls.Config{
-			ServerName: s.config.Host,
-			MinVersion: tls.VersionTLS12,
-			//nolint:gosec // InsecureSkipVerify is configurable by the user
-			InsecureSkipVerify: s.config.InsecureSkipVerify,
-		}
+	if !s.config.TLS {
+		if err := smtp.SendMail(addr, s.smtpAuth, s.config.From, s.config.To, []byte(msg)); err != nil {
+			errorType = "send_error"
 
-		client, err := smtp.Dial(addr)
-		if err != nil {
-			errorType = "dial_error"
-
-			return fmt.Errorf("failed to dial SMTP server: %w", err)
-		}
-		defer client.Close()
-
-		if tlsErr := client.StartTLS(tlsConfig); tlsErr != nil {
-			errorType = "tls_error"
-
-			return fmt.Errorf("failed to start TLS: %w", tlsErr)
-		}
-
-		if s.smtpAuth != nil {
-			if authErr := client.Auth(s.smtpAuth); authErr != nil {
-				errorType = "auth_error"
-
-				return fmt.Errorf("failed to authenticate: %w", authErr)
-			}
-		}
-
-		if mailErr := client.Mail(s.config.From); mailErr != nil {
-			errorType = "sender_error"
-
-			return fmt.Errorf("failed to set sender: %w", mailErr)
-		}
-
-		for _, to := range s.config.To {
-			if rcptErr := client.Rcpt(to); rcptErr != nil {
-				errorType = "recipient_error"
-
-				return fmt.Errorf("failed to add recipient %s: %w", to, rcptErr)
-			}
-		}
-
-		w, err := client.Data()
-		if err != nil {
-			errorType = "data_error"
-
-			return fmt.Errorf("failed to create message writer: %w", err)
-		}
-		defer w.Close()
-
-		_, err = w.Write([]byte(msg))
-		if err != nil {
-			errorType = "write_error"
-
-			return fmt.Errorf("failed to write message: %w", err)
+			return fmt.Errorf("failed to send email: %w", err)
 		}
 
 		return nil
 	}
 
-	if err := smtp.SendMail(addr, s.smtpAuth, s.config.From, s.config.To, []byte(msg)); err != nil {
-		errorType = "send_error"
+	errType, sendErr := s.sendTLSEmail(addr, msg)
+	if sendErr != nil {
+		errorType = errType
 
-		return fmt.Errorf("failed to send email: %w", err)
+		return sendErr
 	}
 
 	return nil
+}
+
+func (s *SMTP) sendTLSEmail(addr, msg string) (string, error) {
+	tlsConfig := &tls.Config{
+		ServerName: s.config.Host,
+		MinVersion: tls.VersionTLS12,
+		//nolint:gosec // InsecureSkipVerify is configurable by the user
+		InsecureSkipVerify: s.config.InsecureSkipVerify,
+	}
+
+	client, err := smtp.Dial(addr)
+	if err != nil {
+		return "dial_error", fmt.Errorf("failed to dial SMTP server: %w", err)
+	}
+	defer client.Close()
+
+	if tlsErr := client.StartTLS(tlsConfig); tlsErr != nil {
+		return "tls_error", fmt.Errorf("failed to start TLS: %w", tlsErr)
+	}
+
+	if s.smtpAuth != nil {
+		if authErr := client.Auth(s.smtpAuth); authErr != nil {
+			return "auth_error", fmt.Errorf("failed to authenticate: %w", authErr)
+		}
+	}
+
+	if mailErr := client.Mail(s.config.From); mailErr != nil {
+		return "sender_error", fmt.Errorf("failed to set sender: %w", mailErr)
+	}
+
+	for _, to := range s.config.To {
+		if rcptErr := client.Rcpt(to); rcptErr != nil {
+			return "recipient_error", fmt.Errorf("failed to add recipient %s: %w", to, rcptErr)
+		}
+	}
+
+	w, err := client.Data()
+	if err != nil {
+		return "data_error", fmt.Errorf("failed to create message writer: %w", err)
+	}
+	defer w.Close()
+
+	if _, writeErr := w.Write([]byte(msg)); writeErr != nil {
+		return "write_error", fmt.Errorf("failed to write message: %w", writeErr)
+	}
+
+	return "", nil
 }

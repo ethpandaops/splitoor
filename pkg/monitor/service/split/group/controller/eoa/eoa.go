@@ -71,8 +71,16 @@ func (c *EOA) tick(ctx context.Context) {
 
 func (c *EOA) gatherMetrics(ctx context.Context) {
 	for _, node := range c.ethereumPool.GetHealthyExecutionNodes() {
+		if ctx.Err() != nil {
+			return
+		}
+
 		balance, err := node.BalanceAt(ctx, c.address)
 		if err != nil {
+			if ctx.Err() != nil {
+				return
+			}
+
 			c.log.WithError(err).WithField("node", node.Name()).Error("Error fetching balance")
 		}
 

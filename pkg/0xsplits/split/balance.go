@@ -2,7 +2,7 @@ package split
 
 import (
 	"context"
-	"fmt"
+	"errors"
 	"math/big"
 
 	"github.com/0xsequence/ethkit/ethcoder"
@@ -27,7 +27,7 @@ func (c *Client) GetETHBalance(ctx context.Context, node *execution.Node, contra
 
 	bigBalance, ok := values[0].(*big.Int)
 	if !ok {
-		return nil, fmt.Errorf("invalid balance")
+		return nil, errors.New("invalid balance")
 	}
 
 	return bigBalance, nil

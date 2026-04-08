@@ -2,11 +2,10 @@ package split
 
 import (
 	"context"
+	"errors"
 	"fmt"
-	"math"
 	"math/big"
 	"sort"
-	"strings"
 	"sync"
 	"time"
 
@@ -41,11 +40,11 @@ func (p *DistributeETHParams) order() error {
 	return nil
 }
 
-func (p *DistributeETHParams) encode(splitAddress string) ([]interface{}, error) {
+func (p *DistributeETHParams) encode(splitAddress string) ([]any, error) {
 	// Create pairs for sorting
-	pairs := make([][2]interface{}, len(p.Accounts))
+	pairs := make([][2]any, len(p.Accounts))
 	for i := range p.Accounts {
-		pairs[i] = [2]interface{}{p.Accounts[i], p.PercentageAllocations[i]}
+		pairs[i] = [2]any{p.Accounts[i], p.PercentageAllocations[i]}
 	}
 
 	// Sort by account address with safe type assertions
@@ -88,7 +87,7 @@ func (p *DistributeETHParams) encode(splitAddress string) ([]interface{}, error)
 		distributorAddress = "0x0000000000000000000000000000000000000000"
 	}
 
-	return []interface{}{
+	return []any{
 		common.HexToAddress(splitAddress),
 		accounts,
 		allocations,
@@ -103,7 +102,7 @@ func (c *Client) DistributeETH(ctx context.Context, node *execution.Node, contra
 	}
 
 	if c.splitAddress == nil {
-		return fmt.Errorf("split address is not set")
+		return errors.New("split address is not set")
 	}
 
 	splitAddress := *c.splitAddress // Dereference safely after nil check
@@ -134,57 +133,11 @@ func (c *Client) DistributeETH(ctx context.Context, node *execution.Node, contra
 
 	c.log.WithField("tx", *txHash).Info("Waiting for transaction to be included in a block")
 
-	// Add a ticker for controlled polling with backoff
-	ticker := time.NewTicker(1 * time.Second)
-	defer ticker.Stop()
-
-	// Track attempts for exponential backoff
-	attempt := 0
-	maxAttempts := 600 // 10 minutes worth of 1-second attempts
-
-	for attempt < maxAttempts {
-		select {
-		case <-pollCtx.Done():
-			// Context cancelled or timed out
-			return fmt.Errorf("context cancelled or timed out while waiting for transaction: %w", pollCtx.Err())
-		case <-ticker.C:
-			// Time to check transaction status
-			var isPending bool
-
-			_, isPending, err = node.TransactionByHash(pollCtx, *txHash)
-			if err != nil {
-				// If we're getting transient errors, continue polling
-				if strings.Contains(err.Error(), "not found") {
-					attempt++
-
-					continue
-				}
-
-				return err
-			}
-
-			if !isPending {
-				// Transaction is no longer pending, we can proceed
-				goto TransactionComplete
-			}
-
-			// Increment attempt counter
-			attempt++
-
-			// Apply exponential backoff after 10 attempts
-			if attempt > 10 {
-				backoffDuration := time.Duration(math.Min(float64(attempt-5), 30)) * time.Second
-				ticker.Reset(backoffDuration)
-			}
-		}
+	if err = c.waitForTransaction(pollCtx, node, *txHash); err != nil {
+		return err
 	}
 
-	// If we reach here, we've exceeded our maximum attempts
-	return fmt.Errorf("exceeded maximum polling attempts (%d) waiting for transaction", maxAttempts)
-
-TransactionComplete:
 	receipt, err := node.TransactionReceipt(ctx, *txHash)
-
 	if err != nil {
 		return err
 	}

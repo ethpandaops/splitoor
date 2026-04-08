@@ -2,6 +2,7 @@ package split
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"math/big"
 	"sort"
@@ -37,11 +38,11 @@ func (p *UpdateSplitParams) order() error {
 	return nil
 }
 
-func (p *UpdateSplitParams) encode(splitAddress string) ([]interface{}, error) {
+func (p *UpdateSplitParams) encode(splitAddress string) ([]any, error) {
 	// Create pairs for sorting
-	pairs := make([][2]interface{}, len(p.Accounts))
+	pairs := make([][2]any, len(p.Accounts))
 	for i := range p.Accounts {
-		pairs[i] = [2]interface{}{p.Accounts[i], p.PercentageAllocations[i]}
+		pairs[i] = [2]any{p.Accounts[i], p.PercentageAllocations[i]}
 	}
 
 	// Sort by account address with safe type assertions
@@ -79,7 +80,7 @@ func (p *UpdateSplitParams) encode(splitAddress string) ([]interface{}, error) {
 		allocations[i] = allocation
 	}
 
-	return []interface{}{
+	return []any{
 		common.HexToAddress(splitAddress),
 		accounts,
 		allocations,
@@ -93,7 +94,7 @@ func (c *Client) Update(ctx context.Context, node *execution.Node, contractABI *
 	}
 
 	if c.splitAddress == nil {
-		return nil, fmt.Errorf("split address is not set")
+		return nil, errors.New("split address is not set")
 	}
 
 	splitAddress := *c.splitAddress // Dereference safely after nil check

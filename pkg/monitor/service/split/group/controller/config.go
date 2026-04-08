@@ -1,7 +1,7 @@
 package controller
 
 import (
-	"fmt"
+	"errors"
 )
 
 type Config struct {
@@ -19,11 +19,11 @@ const (
 
 func (c *Config) Validate() error {
 	if c == nil {
-		return fmt.Errorf("config is nil")
+		return errors.New("config is nil")
 	}
 
 	if c.ControllerType == ControllerTypeUnknown || c.ControllerType == "" {
-		return fmt.Errorf("controller type is required")
+		return errors.New("controller type is required")
 	}
 
 	return nil

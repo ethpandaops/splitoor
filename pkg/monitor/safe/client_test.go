@@ -102,8 +102,11 @@ func TestClient_GetQueuedTransactions(t *testing.T) {
 				w.WriteHeader(tt.serverStatus)
 
 				if tt.serverResponse != nil {
-					err := json.NewEncoder(w).Encode(tt.serverResponse)
-					require.NoError(t, err)
+					if err := json.NewEncoder(w).Encode(tt.serverResponse); err != nil {
+						http.Error(w, err.Error(), http.StatusInternalServerError)
+
+						return
+					}
 				}
 			}))
 			defer server.Close()
@@ -120,7 +123,7 @@ func TestClient_GetQueuedTransactions(t *testing.T) {
 
 			resp, err := c.GetQueuedTransactions(context.Background(), tt.safeAddress, 0)
 			if tt.wantErr {
-				assert.Error(t, err)
+				require.Error(t, err)
 
 				return
 			}
@@ -189,8 +192,11 @@ func TestClient_GetTransaction(t *testing.T) {
 				w.WriteHeader(tt.serverStatus)
 
 				if tt.serverResponse != nil {
-					err := json.NewEncoder(w).Encode(tt.serverResponse)
-					require.NoError(t, err)
+					if err := json.NewEncoder(w).Encode(tt.serverResponse); err != nil {
+						http.Error(w, err.Error(), http.StatusInternalServerError)
+
+						return
+					}
 				}
 			}))
 			defer server.Close()
@@ -207,7 +213,7 @@ func TestClient_GetTransaction(t *testing.T) {
 
 			tx, err := c.GetTransaction(context.Background(), tt.safeTxHash)
 			if tt.wantErr {
-				assert.Error(t, err)
+				require.Error(t, err)
 
 				return
 			}
@@ -230,7 +236,7 @@ func TestClient_SetChain(t *testing.T) {
 	// Test concurrent chain updates
 	var wg sync.WaitGroup
 
-	for i := 0; i < 10; i++ {
+	for i := range 10 {
 		wg.Add(1)
 
 		fn := func(id int) {
@@ -251,7 +257,7 @@ func TestClient_SetChain(t *testing.T) {
 	defer cancel()
 
 	_, err = c.GetQueuedTransactions(ctx, "0x123", 0)
-	assert.Error(t, err)
+	require.Error(t, err)
 }
 
 func TestClient_URLConstruction(t *testing.T) {
@@ -264,8 +270,11 @@ func TestClient_URLConstruction(t *testing.T) {
 		assert.Equal(t, expectedPath, r.URL.Path)
 		assert.Equal(t, fmt.Sprintf("executed=false&nonce__gte=%d", minNonce), r.URL.RawQuery)
 
-		err := json.NewEncoder(w).Encode(&safe.MultisigTransactionsResponse{})
-		require.NoError(t, err)
+		if err := json.NewEncoder(w).Encode(&safe.MultisigTransactionsResponse{}); err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+
+			return
+		}
 	}))
 	defer server.Close()
 
@@ -308,8 +317,12 @@ func TestClient_RequestMetrics(t *testing.T) {
 			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				assert.Equal(t, tt.path, r.URL.Path)
 				w.WriteHeader(tt.statusCode)
-				err := json.NewEncoder(w).Encode(&safe.MultisigTransactionsResponse{})
-				require.NoError(t, err)
+
+				if err := json.NewEncoder(w).Encode(&safe.MultisigTransactionsResponse{}); err != nil {
+					http.Error(w, err.Error(), http.StatusInternalServerError)
+
+					return
+				}
 			}))
 			defer server.Close()
 
@@ -318,9 +331,9 @@ func TestClient_RequestMetrics(t *testing.T) {
 
 			_, err := c.GetQueuedTransactions(context.Background(), "0x123", 0)
 			if tt.shouldError {
-				assert.Error(t, err)
+				require.Error(t, err)
 			} else {
-				assert.NoError(t, err)
+				require.NoError(t, err)
 			}
 		})
 	}
@@ -354,8 +367,11 @@ func TestClient_InvalidResponses(t *testing.T) {
 			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				w.WriteHeader(http.StatusOK)
 
-				_, err := w.Write([]byte(tt.response))
-				require.NoError(t, err)
+				if _, err := w.Write([]byte(tt.response)); err != nil {
+					http.Error(w, err.Error(), http.StatusInternalServerError)
+
+					return
+				}
 			}))
 			defer server.Close()
 
@@ -364,9 +380,9 @@ func TestClient_InvalidResponses(t *testing.T) {
 
 			_, err := c.GetQueuedTransactions(context.Background(), "0x123", 0)
 			if tt.wantErr {
-				assert.Error(t, err)
+				require.Error(t, err)
 			} else {
-				assert.NoError(t, err)
+				require.NoError(t, err)
 			}
 		})
 	}
@@ -387,15 +403,19 @@ func TestClient_ContextCancellation(t *testing.T) {
 	defer cancel()
 
 	_, err := c.GetQueuedTransactions(ctx, "0x123", 0)
-	assert.Error(t, err)
+	require.Error(t, err)
 	assert.Contains(t, err.Error(), context.DeadlineExceeded.Error())
 }
 
 func TestClient_ParallelRequests(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
-		err := json.NewEncoder(w).Encode(&safe.MultisigTransactionsResponse{})
-		require.NoError(t, err)
+
+		if err := json.NewEncoder(w).Encode(&safe.MultisigTransactionsResponse{}); err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+
+			return
+		}
 	}))
 	defer server.Close()
 
@@ -404,14 +424,14 @@ func TestClient_ParallelRequests(t *testing.T) {
 
 	var wg sync.WaitGroup
 
-	for i := 0; i < 10; i++ {
+	for range 10 {
 		wg.Add(1)
 
 		fn := func() {
 			defer wg.Done()
 
 			_, err := c.GetQueuedTransactions(context.Background(), "0x123", 0)
-			assert.NoError(t, err)
+			require.NoError(t, err)
 		}
 
 		go fn()
@@ -472,8 +492,11 @@ func TestClient_GetSafe(t *testing.T) {
 				w.WriteHeader(tt.serverStatus)
 
 				if tt.serverResponse != nil {
-					err := json.NewEncoder(w).Encode(tt.serverResponse)
-					require.NoError(t, err)
+					if err := json.NewEncoder(w).Encode(tt.serverResponse); err != nil {
+						http.Error(w, err.Error(), http.StatusInternalServerError)
+
+						return
+					}
 				}
 			}))
 			defer server.Close()
@@ -490,7 +513,7 @@ func TestClient_GetSafe(t *testing.T) {
 
 			resp, err := c.GetSafe(context.Background(), tt.safeAddress)
 			if tt.wantErr {
-				assert.Error(t, err)
+				require.Error(t, err)
 
 				return
 			}
@@ -499,7 +522,7 @@ func TestClient_GetSafe(t *testing.T) {
 			assert.Equal(t, tt.serverResponse.Address, resp.Address)
 			assert.Equal(t, tt.serverResponse.Nonce, resp.Nonce)
 			assert.Equal(t, tt.serverResponse.Threshold, resp.Threshold)
-			assert.Equal(t, len(tt.serverResponse.Owners), len(resp.Owners))
+			assert.Len(t, resp.Owners, len(tt.serverResponse.Owners))
 		})
 	}
 }
@@ -512,8 +535,11 @@ func TestClient_AuthorizationHeader(t *testing.T) {
 		authHeader := r.Header.Get("Authorization")
 		assert.Equal(t, "Bearer "+apiKey, authHeader)
 
-		err := json.NewEncoder(w).Encode(&safe.MultisigTransactionsResponse{})
-		require.NoError(t, err)
+		if err := json.NewEncoder(w).Encode(&safe.MultisigTransactionsResponse{}); err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+
+			return
+		}
 	}))
 	defer server.Close()
 
@@ -553,11 +579,14 @@ func TestClient_RateLimitRetry(t *testing.T) {
 		// Second request succeeds
 		w.WriteHeader(http.StatusOK)
 
-		err := json.NewEncoder(w).Encode(&safe.MultisigTransactionsResponse{
+		if err := json.NewEncoder(w).Encode(&safe.MultisigTransactionsResponse{
 			Count:   1,
 			Results: []safe.MultisigTransaction{{SafeTxHash: "0xabc"}},
-		})
-		require.NoError(t, err)
+		}); err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+
+			return
+		}
 	}))
 	defer server.Close()
 
@@ -576,6 +605,93 @@ func TestClient_RateLimitRetry(t *testing.T) {
 
 	mu.Lock()
 	assert.Equal(t, 2, requestCount, "expected exactly 2 requests (initial + retry)")
+	mu.Unlock()
+}
+
+func TestClient_RateLimitRetry_MultipleConsecutive429s(t *testing.T) {
+	var requestCount int
+
+	var mu sync.Mutex
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		mu.Lock()
+		defer mu.Unlock()
+
+		requestCount++
+
+		count := requestCount
+
+		if count <= 2 {
+			// First two requests return 429
+			w.Header().Set("Retry-After", "1")
+			w.WriteHeader(http.StatusTooManyRequests)
+
+			return
+		}
+
+		// Third request succeeds
+		w.WriteHeader(http.StatusOK)
+
+		if err := json.NewEncoder(w).Encode(&safe.MultisigTransactionsResponse{
+			Count:   1,
+			Results: []safe.MultisigTransaction{{SafeTxHash: "0xabc"}},
+		}); err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+	}))
+	defer server.Close()
+
+	c, err := safe.NewClient(context.Background(), logrus.New(), "test", &safe.Config{
+		Endpoint: server.URL,
+		APIKey:   "test-key",
+	})
+	require.NoError(t, err)
+
+	c.SetChain("eth")
+
+	resp, err := c.GetQueuedTransactions(context.Background(), "0x123", 0)
+	require.NoError(t, err)
+	assert.Equal(t, 1, resp.Count)
+	assert.Equal(t, "0xabc", resp.Results[0].SafeTxHash)
+
+	mu.Lock()
+	assert.Equal(t, 3, requestCount, "expected 3 requests (initial + 2 retries)")
+	mu.Unlock()
+}
+
+func TestClient_RateLimitRetry_Exhaustion(t *testing.T) {
+	var requestCount int
+
+	var mu sync.Mutex
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		mu.Lock()
+		defer mu.Unlock()
+
+		requestCount++
+
+		// Always return 429 with short retry
+		w.Header().Set("Retry-After", "1")
+		w.WriteHeader(http.StatusTooManyRequests)
+	}))
+	defer server.Close()
+
+	c, err := safe.NewClient(context.Background(), logrus.New(), "test", &safe.Config{
+		Endpoint: server.URL,
+		APIKey:   "test-key",
+	})
+	require.NoError(t, err)
+
+	c.SetChain("eth")
+
+	_, err = c.GetQueuedTransactions(context.Background(), "0x123", 0)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "rate limit retries exhausted")
+
+	mu.Lock()
+	// 1 initial + 5 retries = 6 total requests
+	assert.Equal(t, 6, requestCount, "expected 6 requests (initial + 5 retries)")
 	mu.Unlock()
 }
 
@@ -599,7 +715,7 @@ func TestClient_RateLimitRetry_ContextCancellation(t *testing.T) {
 	defer cancel()
 
 	_, err = c.GetQueuedTransactions(ctx, "0x123", 0)
-	assert.Error(t, err)
+	require.Error(t, err)
 	assert.ErrorIs(t, err, context.DeadlineExceeded)
 }
 
@@ -626,6 +742,6 @@ func TestClient_RateLimitRetry_DefaultDelay(t *testing.T) {
 	defer cancel()
 
 	_, err = c.GetQueuedTransactions(ctx, "0x123", 0)
-	assert.Error(t, err)
+	require.Error(t, err)
 	assert.ErrorIs(t, err, context.DeadlineExceeded)
 }

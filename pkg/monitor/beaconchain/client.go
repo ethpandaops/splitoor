@@ -2,6 +2,7 @@ package beaconchain
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"time"
 
@@ -62,13 +63,7 @@ func (c *client) GetValidators(ctx context.Context, pubkeys []string) (map[strin
 		return validators, nil
 	}
 
-	for i := 0; i < len(response.Data); i++ {
-		// Safe access to array elements with bounds check
-		if i >= len(response.Data) {
-			// This should never happen due to the loop condition, but it's a defensive check
-			break
-		}
-
+	for i := range response.Data {
 		validator := &response.Data[i]
 
 		// Only add to map if validator has a valid pubkey
@@ -88,7 +83,7 @@ func (c *client) GetValidator(ctx context.Context, pubkey string) (*Validator, e
 
 	// Check if response is nil
 	if response == nil {
-		return nil, fmt.Errorf("received nil response")
+		return nil, errors.New("received nil response")
 	}
 
 	if response.Status != StatusOK {

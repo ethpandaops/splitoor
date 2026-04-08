@@ -2,6 +2,7 @@ package notifier
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"time"
 
@@ -57,11 +58,11 @@ func (p *Publisher) Publish(e event.Event) error {
 
 func (p *Publisher) PublishWithContext(ctx context.Context, e event.Event) error {
 	if e == nil {
-		return fmt.Errorf("cannot publish nil event")
+		return errors.New("cannot publish nil event")
 	}
 
 	if ctx == nil {
-		return fmt.Errorf("cannot publish with nil context")
+		return errors.New("cannot publish with nil context")
 	}
 
 	// Create a reasonable timeout for publishing events

@@ -1,7 +1,7 @@
 package safe
 
 import (
-	"fmt"
+	"strconv"
 	"strings"
 	"time"
 )
@@ -81,10 +81,10 @@ func (v *RecoveryTransactionConfirmations) GetDescriptionText(includeMonitor, in
 	sb.WriteString(v.RecoveryTransactionID)
 
 	sb.WriteString("\nCurrent Confirmations: ")
-	sb.WriteString(fmt.Sprintf("%d", v.NumConfirmations))
+	sb.WriteString(strconv.Itoa(v.NumConfirmations))
 
 	sb.WriteString("\nExpected Confirmations: ")
-	sb.WriteString(fmt.Sprintf("%d", v.ExpectedConfirmations))
+	sb.WriteString(strconv.Itoa(v.ExpectedConfirmations))
 
 	return sb.String()
 }
@@ -117,11 +117,11 @@ func (v *RecoveryTransactionConfirmations) GetDescriptionMarkdown(includeMonitor
 	sb.WriteString("`\n")
 
 	sb.WriteString("**Current Confirmations:** ")
-	sb.WriteString(fmt.Sprintf("%d", v.NumConfirmations))
+	sb.WriteString(strconv.Itoa(v.NumConfirmations))
 	sb.WriteString("\n")
 
 	sb.WriteString("**Expected Confirmations:** ")
-	sb.WriteString(fmt.Sprintf("%d", v.ExpectedConfirmations))
+	sb.WriteString(strconv.Itoa(v.ExpectedConfirmations))
 
 	return sb.String()
 }
@@ -154,11 +154,11 @@ func (v *RecoveryTransactionConfirmations) GetDescriptionHTML(includeMonitor, in
 	sb.WriteString("</p>")
 
 	sb.WriteString("<p><strong>Current Confirmations:</strong> ")
-	sb.WriteString(fmt.Sprintf("%d", v.NumConfirmations))
+	sb.WriteString(strconv.Itoa(v.NumConfirmations))
 	sb.WriteString("</p>")
 
 	sb.WriteString("<p><strong>Expected Confirmations:</strong> ")
-	sb.WriteString(fmt.Sprintf("%d", v.ExpectedConfirmations))
+	sb.WriteString(strconv.Itoa(v.ExpectedConfirmations))
 	sb.WriteString("</p>")
 
 	return sb.String()

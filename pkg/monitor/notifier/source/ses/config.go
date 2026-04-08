@@ -1,6 +1,6 @@
 package ses
 
-import "fmt"
+import "errors"
 
 type Config struct {
 	From string   `yaml:"from"`
@@ -9,11 +9,11 @@ type Config struct {
 
 func (c *Config) Validate() error {
 	if c.From == "" {
-		return fmt.Errorf("from is required")
+		return errors.New("from is required")
 	}
 
 	if len(c.To) == 0 {
-		return fmt.Errorf("to is required")
+		return errors.New("to is required")
 	}
 
 	return nil

@@ -2,7 +2,7 @@ package split
 
 import (
 	"context"
-	"fmt"
+	"errors"
 
 	"github.com/0xsequence/ethkit/ethcoder"
 	"github.com/0xsequence/ethkit/go-ethereum/common"
@@ -11,7 +11,7 @@ import (
 
 func (c *Client) GetController(ctx context.Context, node *execution.Node, contractABI *ethcoder.ABI) (*string, error) {
 	if c.splitAddress == nil {
-		return nil, fmt.Errorf("split address is required")
+		return nil, errors.New("split address is required")
 	}
 
 	calldata, err := contractABI.EncodeMethodCalldataFromStringValues("getController", []string{*c.splitAddress})
@@ -31,7 +31,7 @@ func (c *Client) GetController(ctx context.Context, node *execution.Node, contra
 
 	controllerAddress, ok := values[0].(common.Address)
 	if !ok {
-		return nil, fmt.Errorf("invalid controller address")
+		return nil, errors.New("invalid controller address")
 	}
 
 	controller := controllerAddress.Hex()
@@ -41,7 +41,7 @@ func (c *Client) GetController(ctx context.Context, node *execution.Node, contra
 
 func (c *Client) GetHash(ctx context.Context, node *execution.Node, contractABI *ethcoder.ABI) (*[32]uint8, error) {
 	if c.splitAddress == nil {
-		return nil, fmt.Errorf("split address is required")
+		return nil, errors.New("split address is required")
 	}
 
 	calldata, err := contractABI.EncodeMethodCalldataFromStringValues("getHash", []string{*c.splitAddress})
@@ -61,7 +61,7 @@ func (c *Client) GetHash(ctx context.Context, node *execution.Node, contractABI 
 
 	rsp, ok := values[0].([32]uint8)
 	if !ok {
-		return nil, fmt.Errorf("invalid hash")
+		return nil, errors.New("invalid hash")
 	}
 
 	return &rsp, nil

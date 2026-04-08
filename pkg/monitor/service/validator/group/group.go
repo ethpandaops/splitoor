@@ -12,6 +12,7 @@ import (
 	v1 "github.com/attestantio/go-eth2-client/api/v1"
 	"github.com/attestantio/go-eth2-client/spec/phase0"
 	"github.com/ethpandaops/splitoor/pkg/ethereum"
+	"github.com/ethpandaops/splitoor/pkg/ethereum/beacon"
 	"github.com/ethpandaops/splitoor/pkg/monitor/beaconchain"
 	"github.com/ethpandaops/splitoor/pkg/monitor/event/validator"
 	"github.com/ethpandaops/splitoor/pkg/monitor/notifier"
@@ -53,10 +54,7 @@ func NewGroup(ctx context.Context, log logrus.FieldLogger, monitor string, conf 
 
 	if bc != nil {
 		for i := 0; i < len(conf.Pubkeys); i += bc.GetBatchSize() {
-			end := i + bc.GetBatchSize()
-			if end > len(conf.Pubkeys) {
-				end = len(conf.Pubkeys)
-			}
+			end := min(i+bc.GetBatchSize(), len(conf.Pubkeys))
 
 			chunks = append(chunks, conf.Pubkeys[i:end])
 		}
@@ -120,23 +118,15 @@ func (g *Group) tick(ctx context.Context) {
 	var wg sync.WaitGroup
 
 	if g.beaconchain != nil && time.Since(g.beaconchainLastTick) > g.beaconchain.GetCheckInterval() {
-		wg.Add(1)
-
-		go func() {
-			defer wg.Done()
-
+		wg.Go(func() {
 			g.checkBeaconchain(ctx, newState)
-		}()
+		})
 	}
 
 	if g.ethereumPool != nil && g.ethereumPool.HasHealthyBeaconNodes() {
-		wg.Add(1)
-
-		go func() {
-			defer wg.Done()
-
+		wg.Go(func() {
 			g.checkBeaconAPI(ctx, newState)
-		}()
+		})
 	}
 
 	wg.Wait()
@@ -150,38 +140,50 @@ func (g *Group) tick(ctx context.Context) {
 
 func (g *Group) checkBeaconAPI(ctx context.Context, state *State) {
 	for _, node := range g.ethereumPool.GetHealthyBeaconNodes() {
-		validators, err := node.Node().FetchValidators(ctx, "head", nil, g.pubkeys)
-		if err != nil {
-			g.log.WithError(err).WithField("source", node.Name()).Error("Error fetching validators")
+		if ctx.Err() != nil {
+			return
+		}
 
-			for _, pubkey := range g.pubkeys {
-				g.metrics.UpdateStatus(MetricsStatusUnknown, []string{g.name, pubkey.String(), node.Name()})
-			}
+		g.processBeaconNode(ctx, node, state)
+	}
+}
+
+func (g *Group) processBeaconNode(ctx context.Context, node *beacon.Node, state *State) {
+	validators, err := node.Node().FetchValidators(ctx, "head", nil, g.pubkeys)
+	if err != nil {
+		if ctx.Err() != nil {
+			return
+		}
+
+		g.log.WithError(err).WithField("source", node.Name()).Error("Error fetching validators")
+
+		for _, pubkey := range g.pubkeys {
+			g.metrics.UpdateStatus(MetricsStatusUnknown, []string{g.name, pubkey.String(), node.Name()})
+		}
+
+		return
+	}
+
+	foundPubkeys := make(map[string]bool, len(validators))
+
+	for _, validator := range validators {
+		g.updateValidatorBeaconAPI(validator, node.Name(), state)
+
+		pubkey, pubkeyErr := validator.PubKey(ctx)
+		if pubkeyErr != nil {
+			g.log.WithError(pubkeyErr).WithField("source", node.Name()).WithField("validator_index", validator.Index).Error("Error getting pubkey")
 
 			continue
 		}
 
-		foundPubkeys := make(map[string]bool)
+		foundPubkeys[pubkey.String()] = true
+	}
 
-		for _, validator := range validators {
-			g.updateValidatorBeaconAPI(validator, node.Name(), state)
+	for _, pubkey := range g.pubkeys {
+		if !foundPubkeys[pubkey.String()] {
+			g.log.WithField("pubkey", pubkey.String()).WithField("source", node.Name()).Warn("Validator not found")
 
-			pubkey, err := validator.PubKey(ctx)
-			if err != nil {
-				g.log.WithError(err).WithField("source", node.Name()).WithField("validator_index", validator.Index).Error("Error getting pubkey")
-
-				continue
-			}
-
-			foundPubkeys[pubkey.String()] = true
-		}
-
-		for _, pubkey := range g.pubkeys {
-			if !foundPubkeys[pubkey.String()] {
-				g.log.WithField("pubkey", pubkey.String()).WithField("source", node.Name()).Warn("Validator not found")
-
-				g.metrics.UpdateStatus(MetricsStatusUnknown, []string{g.name, pubkey.String(), node.Name()})
-			}
+			g.metrics.UpdateStatus(MetricsStatusUnknown, []string{g.name, pubkey.String(), node.Name()})
 		}
 	}
 }
@@ -235,44 +237,53 @@ func (g *Group) getValidatorsBeaconchain(ctx context.Context, validators []strin
 	}
 
 	if len(validators) == 1 {
-		response, err := g.beaconchain.GetValidator(ctx, validators[0])
-		if err != nil {
-			g.log.WithError(err).WithField("source", "beaconcha.in").WithField("pubkey", validators[0]).Error("Error getting validator")
-			g.metrics.UpdateStatus(MetricsStatusUnknown, []string{g.name, validators[0], "beaconcha.in"})
+		return g.getSingleValidatorBeaconchain(ctx, validators[0], state)
+	}
 
-			return err
+	return g.getMultipleValidatorsBeaconchain(ctx, validators, state)
+}
+
+func (g *Group) getSingleValidatorBeaconchain(ctx context.Context, pubkey string, state *State) error {
+	response, err := g.beaconchain.GetValidator(ctx, pubkey)
+	if err != nil {
+		g.log.WithError(err).WithField("source", "beaconcha.in").WithField("pubkey", pubkey).Error("Error getting validator")
+		g.metrics.UpdateStatus(MetricsStatusUnknown, []string{g.name, pubkey, "beaconcha.in"})
+
+		return err
+	}
+
+	g.updateValidatorBeaconchain(response, state)
+
+	return nil
+}
+
+func (g *Group) getMultipleValidatorsBeaconchain(ctx context.Context, validators []string, state *State) error {
+	response, err := g.beaconchain.GetValidators(ctx, validators)
+	if err != nil {
+		for _, pubkey := range validators {
+			g.metrics.UpdateStatus(MetricsStatusUnknown, []string{g.name, pubkey, "beaconcha.in"})
 		}
 
-		g.updateValidatorBeaconchain(response, state)
-	} else {
-		response, err := g.beaconchain.GetValidators(ctx, validators)
-		if err != nil {
-			for _, pubkey := range validators {
-				g.metrics.UpdateStatus(MetricsStatusUnknown, []string{g.name, pubkey, "beaconcha.in"})
-			}
+		g.log.WithError(err).WithField("source", "beaconcha.in").WithField("pubkeys", validators).Error("Error getting validators")
 
-			g.log.WithError(err).WithField("source", "beaconcha.in").WithField("pubkeys", validators).Error("Error getting validators")
+		return err
+	}
 
-			return err
+	foundPubkeys := make(map[string]bool, len(response))
+
+	for _, v := range response {
+		if v != nil {
+			g.updateValidatorBeaconchain(v, state)
+
+			foundPubkeys[v.Pubkey] = true
 		}
+	}
 
-		foundPubkeys := make(map[string]bool)
+	for _, requestedPubkey := range validators {
+		if !foundPubkeys[requestedPubkey] {
+			g.log.WithField("pubkey", requestedPubkey).WithField("source", "beaconcha.in").Warn("Validator not found")
 
-		for _, validator := range response {
-			if validator != nil {
-				g.updateValidatorBeaconchain(validator, state)
-
-				foundPubkeys[validator.Pubkey] = true
-			}
-		}
-
-		// Check only the validators we requested in this chunk
-		for _, requestedPubkey := range validators {
-			if !foundPubkeys[requestedPubkey] {
-				g.log.WithField("pubkey", requestedPubkey).WithField("source", "beaconcha.in").Warn("Validator not found")
-
-				g.metrics.UpdateStatus(MetricsStatusUnknown, []string{g.name, requestedPubkey, "beaconcha.in"})
-			}
+			g.metrics.UpdateStatus(MetricsStatusUnknown, []string{g.name, requestedPubkey, "beaconcha.in"})
 		}
 	}
 
@@ -358,54 +369,59 @@ func (g *Group) updateAlerts(changedPubkeys []string) {
 	defer g.mu.Unlock()
 
 	for _, pubkey := range changedPubkeys {
-		if _, exists := g.balanceAlerts[pubkey]; !exists {
-			g.balanceAlerts[pubkey] = alert.NewBalance(g.log, MinBalance)
+		g.ensureAlerts(pubkey)
+		g.checkPubkeyAlerts(pubkey)
+	}
+}
+
+func (g *Group) ensureAlerts(pubkey string) {
+	if _, exists := g.balanceAlerts[pubkey]; !exists {
+		g.balanceAlerts[pubkey] = alert.NewBalance(g.log, MinBalance)
+	}
+
+	if _, exists := g.statusAlerts[pubkey]; !exists {
+		g.statusAlerts[pubkey] = alert.NewStatus(g.log, ExpectedStatuses)
+	}
+
+	if _, exists := g.withdrawalCredentialsAlerts[pubkey]; !exists {
+		g.withdrawalCredentialsAlerts[pubkey] = alert.NewWithdrawalCredentials(g.log, WithdrawalCredentialsCodes)
+	}
+}
+
+func (g *Group) checkPubkeyAlerts(pubkey string) {
+	sources := g.validatorState.Validators[pubkey].Sources
+
+	balances := make([]uint64, 0, len(sources))
+	statuses := make([]string, 0, len(sources))
+	codes := make([]int64, 0, len(sources))
+
+	for _, source := range sources {
+		balances = append(balances, source.Balance)
+		statuses = append(statuses, string(source.Status))
+		codes = append(codes, source.WithdrawalCredentialsCode)
+	}
+
+	if shouldAlert, balance := g.balanceAlerts[pubkey].Update(balances); shouldAlert {
+		g.log.WithField("balance", *balance).WithField("pubkey", pubkey).Warn("Alerting min balance")
+
+		if err := g.publisher.Publish(validator.NewMinBalance(time.Now(), *balance, pubkey, g.name, g.monitor)); err != nil {
+			g.log.WithError(err).WithField("pubkey", pubkey).Error("Error publishing min balance alert")
 		}
+	}
 
-		if _, exists := g.statusAlerts[pubkey]; !exists {
-			g.statusAlerts[pubkey] = alert.NewStatus(g.log, ExpectedStatuses)
+	if shouldAlert, alertingStatus := g.statusAlerts[pubkey].Update(statuses); shouldAlert {
+		g.log.WithField("status", *alertingStatus).WithField("pubkey", pubkey).Warn("Alerting status")
+
+		if err := g.publisher.Publish(validator.NewStatus(time.Now(), *alertingStatus, pubkey, g.name, g.monitor)); err != nil {
+			g.log.WithError(err).WithField("pubkey", pubkey).WithField("status", *alertingStatus).Error("Error publishing status alert")
 		}
+	}
 
-		if _, exists := g.withdrawalCredentialsAlerts[pubkey]; !exists {
-			g.withdrawalCredentialsAlerts[pubkey] = alert.NewWithdrawalCredentials(g.log, WithdrawalCredentialsCodes)
-		}
+	if shouldAlert, alertingCredential := g.withdrawalCredentialsAlerts[pubkey].Update(codes); shouldAlert {
+		g.log.WithField("credential", *alertingCredential).WithField("pubkey", pubkey).Warn("Alerting withdrawal credentials")
 
-		balanceAlert := g.balanceAlerts[pubkey]
-		statusAlert := g.statusAlerts[pubkey]
-		withdrawalCredentialsAlert := g.withdrawalCredentialsAlerts[pubkey]
-
-		balances := make([]uint64, 0, len(g.validatorState.Validators[pubkey].Sources))
-		statuses := make([]string, 0, len(g.validatorState.Validators[pubkey].Sources))
-		codes := make([]int64, 0, len(g.validatorState.Validators[pubkey].Sources))
-
-		for _, source := range g.validatorState.Validators[pubkey].Sources {
-			balances = append(balances, source.Balance)
-			statuses = append(statuses, string(source.Status))
-			codes = append(codes, source.WithdrawalCredentialsCode)
-		}
-
-		if shouldAlert, balance := balanceAlert.Update(balances); shouldAlert {
-			g.log.WithField("balance", *balance).WithField("pubkey", pubkey).Warn("Alerting min balance")
-
-			if err := g.publisher.Publish(validator.NewMinBalance(time.Now(), *balance, pubkey, g.name, g.monitor)); err != nil {
-				g.log.WithError(err).WithField("pubkey", pubkey).Error("Error publishing min balance alert")
-			}
-		}
-
-		if shouldAlert, alertingStatus := statusAlert.Update(statuses); shouldAlert {
-			g.log.WithField("status", *alertingStatus).WithField("pubkey", pubkey).Warn("Alerting status")
-
-			if err := g.publisher.Publish(validator.NewStatus(time.Now(), *alertingStatus, pubkey, g.name, g.monitor)); err != nil {
-				g.log.WithError(err).WithField("pubkey", pubkey).WithField("status", *alertingStatus).Error("Error publishing status alert")
-			}
-		}
-
-		if shouldAlert, alertingCredential := withdrawalCredentialsAlert.Update(codes); shouldAlert {
-			g.log.WithField("credential", *alertingCredential).WithField("pubkey", pubkey).Warn("Alerting withdrawal credentials")
-
-			if err := g.publisher.Publish(validator.NewWithdrawalCredentials(time.Now(), *alertingCredential, pubkey, g.name, g.monitor)); err != nil {
-				g.log.WithError(err).WithField("pubkey", pubkey).WithField("credential", *alertingCredential).Error("Error publishing withdrawal credentials alert")
-			}
+		if err := g.publisher.Publish(validator.NewWithdrawalCredentials(time.Now(), *alertingCredential, pubkey, g.name, g.monitor)); err != nil {
+			g.log.WithError(err).WithField("pubkey", pubkey).WithField("credential", *alertingCredential).Error("Error publishing withdrawal credentials alert")
 		}
 	}
 }

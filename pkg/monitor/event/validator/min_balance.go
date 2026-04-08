@@ -73,7 +73,7 @@ func (v *MinBalance) GetDescriptionText(includeMonitor, includeGroup bool) strin
 	sb.WriteString("\nPubkey: ")
 	sb.WriteString(v.Pubkey)
 	sb.WriteString("\nBalance: ")
-	sb.WriteString(fmt.Sprintf("%.4f ETH", float64(v.Balance)/1e18))
+	fmt.Fprintf(&sb, "%.4f ETH", float64(v.Balance)/1e18)
 
 	return sb.String()
 }
@@ -102,7 +102,7 @@ func (v *MinBalance) GetDescriptionMarkdown(includeMonitor, includeGroup bool) s
 	sb.WriteString("`\n")
 
 	sb.WriteString("**Balance:** ")
-	sb.WriteString(fmt.Sprintf("%.4f ETH", float64(v.Balance)/1e18))
+	fmt.Fprintf(&sb, "%.4f ETH", float64(v.Balance)/1e18)
 
 	return sb.String()
 }
@@ -131,7 +131,7 @@ func (v *MinBalance) GetDescriptionHTML(includeMonitor, includeGroup bool) strin
 	sb.WriteString("</p>")
 
 	sb.WriteString("<p><strong>Balance:</strong> ")
-	sb.WriteString(fmt.Sprintf("%.4f ETH", float64(v.Balance)/1e18))
+	fmt.Fprintf(&sb, "%.4f ETH", float64(v.Balance)/1e18)
 	sb.WriteString("</p>")
 
 	return sb.String()

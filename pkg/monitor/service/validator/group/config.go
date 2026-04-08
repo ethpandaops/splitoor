@@ -1,6 +1,6 @@
 package group
 
-import "fmt"
+import "errors"
 
 type Config struct {
 	Name    string   `yaml:"name"`
@@ -13,7 +13,7 @@ func (c *Config) Validate() error {
 	}
 
 	if c.Name == "" {
-		return fmt.Errorf("name is required")
+		return errors.New("name is required")
 	}
 
 	return nil

@@ -2,6 +2,7 @@ package split
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"math"
 	"math/big"
@@ -15,6 +16,50 @@ import (
 	"github.com/0xsequence/ethkit/go-ethereum/crypto"
 	"github.com/ethpandaops/splitoor/pkg/ethereum/execution"
 )
+
+// waitForTransaction polls the node for a transaction until it is no longer
+// pending or the context is cancelled. It applies exponential backoff after
+// the first 10 attempts.
+func (c *Client) waitForTransaction(ctx context.Context, node *execution.Node, txHash string) error {
+	ticker := time.NewTicker(1 * time.Second)
+	defer ticker.Stop()
+
+	attempt := 0
+	maxAttempts := 600 // 10 minutes worth of 1-second attempts
+
+	for attempt < maxAttempts {
+		select {
+		case <-ctx.Done():
+			return fmt.Errorf("context cancelled or timed out while waiting for transaction: %w", ctx.Err())
+		case <-ticker.C:
+			_, isPending, err := node.TransactionByHash(ctx, txHash)
+			if err != nil {
+				// If we're getting transient errors, continue polling
+				if strings.Contains(err.Error(), "not found") {
+					attempt++
+
+					continue
+				}
+
+				return err
+			}
+
+			if !isPending {
+				return nil
+			}
+
+			attempt++
+
+			// Apply exponential backoff after 10 attempts
+			if attempt > 10 {
+				backoffDuration := time.Duration(math.Min(float64(attempt-5), 30)) * time.Second
+				ticker.Reset(backoffDuration)
+			}
+		}
+	}
+
+	return fmt.Errorf("exceeded maximum polling attempts (%d) waiting for transaction", maxAttempts)
+}
 
 type CreateSplitParams struct {
 	Controller            string
@@ -40,11 +85,11 @@ func (c *CreateSplitParams) order() error {
 	return nil
 }
 
-func (c *CreateSplitParams) encode() ([]interface{}, error) {
+func (c *CreateSplitParams) encode() ([]any, error) {
 	// Create pairs for sorting
-	pairs := make([][2]interface{}, len(c.Accounts))
+	pairs := make([][2]any, len(c.Accounts))
 	for i := range c.Accounts {
-		pairs[i] = [2]interface{}{c.Accounts[i], c.PercentageAllocations[i]}
+		pairs[i] = [2]any{c.Accounts[i], c.PercentageAllocations[i]}
 	}
 
 	// Sort by account address with safe type assertions
@@ -82,7 +127,7 @@ func (c *CreateSplitParams) encode() ([]interface{}, error) {
 		allocations[i] = allocation
 	}
 
-	return []interface{}{
+	return []any{
 		accounts,
 		allocations,
 		c.DistributorFee,
@@ -96,7 +141,7 @@ func (c *Client) Create(ctx context.Context, node *execution.Node, contractABI *
 	}
 
 	if c.splitAddress != nil {
-		return nil, fmt.Errorf("split address is already set")
+		return nil, errors.New("split address is already set")
 	}
 
 	pKey, err := crypto.HexToECDSA(privateKey)
@@ -125,73 +170,28 @@ func (c *Client) Create(ctx context.Context, node *execution.Node, contractABI *
 
 	c.log.WithField("tx", *txHash).Info("Waiting for transaction to be included in a block")
 
-	// Add a ticker for controlled polling with backoff
-	ticker := time.NewTicker(1 * time.Second)
-	defer ticker.Stop()
-
-	// Track attempts for exponential backoff
-	attempt := 0
-	maxAttempts := 600 // 10 minutes worth of 1-second attempts
-
-	for attempt < maxAttempts {
-		select {
-		case <-pollCtx.Done():
-			// Context cancelled or timed out
-			return nil, fmt.Errorf("context cancelled or timed out while waiting for transaction: %w", pollCtx.Err())
-		case <-ticker.C:
-			// Time to check transaction status
-			var isPending bool
-
-			_, isPending, err = node.TransactionByHash(pollCtx, *txHash)
-			if err != nil {
-				// If we're getting transient errors, continue polling
-				if strings.Contains(err.Error(), "not found") {
-					attempt++
-
-					continue
-				}
-
-				return nil, err
-			}
-
-			if !isPending {
-				// Transaction is no longer pending, we can proceed
-				goto TransactionComplete
-			}
-
-			// Increment attempt counter
-			attempt++
-
-			// Apply exponential backoff after 10 attempts
-			if attempt > 10 {
-				backoffDuration := time.Duration(math.Min(float64(attempt-5), 30)) * time.Second
-				ticker.Reset(backoffDuration)
-			}
-		}
+	err = c.waitForTransaction(pollCtx, node, *txHash)
+	if err != nil {
+		return nil, err
 	}
 
-	// If we reach here, we've exceeded our maximum attempts
-	return nil, fmt.Errorf("exceeded maximum polling attempts (%d) waiting for transaction", maxAttempts)
-
-TransactionComplete:
 	receipt, err := node.TransactionReceipt(ctx, *txHash)
-
 	if err != nil {
 		return nil, err
 	}
 
 	if receipt == nil {
-		return nil, fmt.Errorf("nil transaction receipt returned")
+		return nil, errors.New("nil transaction receipt returned")
 	}
 
 	if len(receipt.Logs) == 0 {
-		return nil, fmt.Errorf("no logs found in transaction receipt")
+		return nil, errors.New("no logs found in transaction receipt")
 	}
 
 	// Safely access the first log
 	firstLog := receipt.Logs[0]
 	if firstLog == nil {
-		return nil, fmt.Errorf("nil log entry in transaction receipt")
+		return nil, errors.New("nil log entry in transaction receipt")
 	}
 
 	if len(firstLog.Topics) < 2 {
@@ -200,7 +200,7 @@ TransactionComplete:
 
 	// Safely access the second topic
 	if firstLog.Topics[1] == (common.Hash{}) {
-		return nil, fmt.Errorf("empty topic hash at index 1")
+		return nil, errors.New("empty topic hash at index 1")
 	}
 
 	splitAddress := common.HexToAddress(firstLog.Topics[1].Hex()).Hex()

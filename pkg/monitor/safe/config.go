@@ -1,6 +1,6 @@
 package safe
 
-import "fmt"
+import "errors"
 
 // ChainIDToName maps chain IDs to their Safe API chain names.
 var ChainIDToName = map[string]string{
@@ -23,11 +23,11 @@ func (c *Config) Validate() error {
 	}
 
 	if c.Endpoint == "" {
-		return fmt.Errorf("endpoint is required")
+		return errors.New("endpoint is required")
 	}
 
 	if c.APIKey == "" {
-		return fmt.Errorf("apiKey is required for Transaction Service API")
+		return errors.New("apiKey is required for Transaction Service API")
 	}
 
 	return nil

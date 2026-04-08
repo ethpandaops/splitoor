@@ -1,23 +1,24 @@
 package split
 
 import (
+	"errors"
 	"fmt"
 	"sort"
 )
 
 func ParseRecipients(accounts []string, percentageAllocations []uint32) (recipients []string, allocations []uint32, err error) {
 	if len(accounts) < 2 {
-		return nil, nil, fmt.Errorf("must specify at least 2 recipients")
+		return nil, nil, errors.New("must specify at least 2 recipients")
 	}
 
 	if len(accounts) != len(percentageAllocations) {
-		return nil, nil, fmt.Errorf("number of accounts and percentage allocations must match")
+		return nil, nil, errors.New("number of accounts and percentage allocations must match")
 	}
 
 	// Create pairs for sorting
-	pairs := make([][2]interface{}, len(accounts))
+	pairs := make([][2]any, len(accounts))
 	for i := range accounts {
-		pairs[i] = [2]interface{}{accounts[i], percentageAllocations[i]}
+		pairs[i] = [2]any{accounts[i], percentageAllocations[i]}
 	}
 
 	// Sort by account address with safe type assertions

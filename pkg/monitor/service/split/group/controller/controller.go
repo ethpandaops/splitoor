@@ -27,7 +27,7 @@ func NewController(ctx context.Context, log logrus.FieldLogger, monitor, name st
 		return nil, errors.New("controller type is required")
 	}
 
-	switch controllerType {
+	switch controllerType { //nolint:exhaustive // ControllerTypeUnknown is handled above
 	case ControllerTypeEOA:
 		conf := &eoa.Config{}
 

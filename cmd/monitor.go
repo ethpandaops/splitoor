@@ -10,9 +10,7 @@ import (
 	"gopkg.in/yaml.v2"
 )
 
-var (
-	monitorConfigFile string
-)
+var monitorConfigFile string
 
 var monitorCmd = &cobra.Command{
 	Use:   "monitor",
@@ -21,10 +19,7 @@ var monitorCmd = &cobra.Command{
 	RunE: func(cmd *cobra.Command, args []string) error {
 		initCommon()
 
-		err := monitor(cmd.Context())
-		if err != nil {
-			log.Fatal(err)
-		}
+		monitor(cmd.Context())
 
 		return nil
 	},
@@ -36,7 +31,7 @@ func init() {
 	monitorCmd.Flags().StringVar(&monitorConfigFile, "config", "config.yaml", "Config file (default is config.yaml)")
 }
 
-func monitor(ctx context.Context) error {
+func monitor(ctx context.Context) {
 	config, err := loadMonitorConfigFromFile(monitorConfigFile)
 	if err != nil {
 		log.Fatal(err)
@@ -47,13 +42,11 @@ func monitor(ctx context.Context) error {
 		log.Fatal(err)
 	}
 
-	if err := server.Start(ctx); err != nil {
-		log.Fatal(err)
+	if startErr := server.Start(ctx); startErr != nil {
+		log.Fatal(startErr)
 	}
 
 	log.Info("Splitoor monitor exited - cya!")
-
-	return nil
 }
 
 func loadMonitorConfigFromFile(file string) (*m.Config, error) {
@@ -63,8 +56,8 @@ func loadMonitorConfigFromFile(file string) (*m.Config, error) {
 
 	config := &m.Config{}
 
-	if err := defaults.Set(config); err != nil {
-		return nil, err
+	if defaultsErr := defaults.Set(config); defaultsErr != nil {
+		return nil, defaultsErr
 	}
 
 	yamlFile, err := os.ReadFile(file)
@@ -74,8 +67,8 @@ func loadMonitorConfigFromFile(file string) (*m.Config, error) {
 
 	type plain m.Config
 
-	if err := yaml.Unmarshal(yamlFile, (*plain)(config)); err != nil {
-		return nil, err
+	if unmarshalErr := yaml.Unmarshal(yamlFile, (*plain)(config)); unmarshalErr != nil {
+		return nil, unmarshalErr
 	}
 
 	return config, nil

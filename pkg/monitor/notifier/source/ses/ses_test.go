@@ -8,6 +8,7 @@ import (
 	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
+	"github.com/stretchr/testify/require"
 )
 
 type MockEvent struct {
@@ -75,10 +76,10 @@ func TestNewSES(t *testing.T) {
 			ses, err := s.NewSES(context.Background(), entry, tt.monitor, tt.name, nil, true, true, tt.config)
 
 			if tt.expectError {
-				assert.Error(t, err)
+				require.Error(t, err)
 				assert.Nil(t, ses)
 			} else {
-				assert.NoError(t, err)
+				require.NoError(t, err)
 				assert.NotNil(t, ses)
 				assert.Equal(t, tt.name, ses.GetName())
 				assert.Equal(t, tt.config, ses.GetConfig())
@@ -94,13 +95,13 @@ func TestSESStartStop(t *testing.T) {
 		From: "test@example.com",
 		To:   []string{"recipient@example.com"},
 	})
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	err = ses.Start(context.Background())
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	err = ses.Stop(context.Background())
-	assert.NoError(t, err)
+	require.NoError(t, err)
 }
 
 func TestSESGetTypeAndName(t *testing.T) {
@@ -110,7 +111,7 @@ func TestSESGetTypeAndName(t *testing.T) {
 		From: "test@example.com",
 		To:   []string{"recipient@example.com"},
 	})
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	assert.Equal(t, s.SourceType, ses.GetType())
 	assert.Equal(t, "test_source", ses.GetName())

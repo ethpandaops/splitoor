@@ -1,6 +1,6 @@
 package safe
 
-import "fmt"
+import "errors"
 
 type Config struct {
 	Address   string   `yaml:"address"`
@@ -10,19 +10,19 @@ type Config struct {
 
 func (c *Config) Validate() error {
 	if c == nil {
-		return fmt.Errorf("config is nil")
+		return errors.New("config is nil")
 	}
 
 	if c.Address == "" {
-		return fmt.Errorf("address is required")
+		return errors.New("address is required")
 	}
 
 	if c.Threshold == 0 {
-		return fmt.Errorf("threshold is required")
+		return errors.New("threshold is required")
 	}
 
 	if len(c.Signers) == 0 {
-		return fmt.Errorf("signers is required")
+		return errors.New("signers is required")
 	}
 
 	return nil

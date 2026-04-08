@@ -2,6 +2,7 @@ package validator
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
 	"github.com/ethpandaops/splitoor/pkg/ethereum"
@@ -22,7 +23,7 @@ type Service struct {
 
 func NewService(ctx context.Context, log logrus.FieldLogger, monitor string, config *Config, ethereumPool *ethereum.Pool, publisher *notifier.Publisher, beaconchainClient beaconchain.Client) (*Service, error) {
 	if beaconchainClient == nil && !ethereumPool.HasBeaconNodes() {
-		return nil, fmt.Errorf("no beaconchain client or ethereum beacon nodes configured")
+		return nil, errors.New("no beaconchain client or ethereum beacon nodes configured")
 	}
 
 	groups := make([]*group.Group, 0, len(config.Groups))

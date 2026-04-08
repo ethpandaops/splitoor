@@ -8,6 +8,7 @@ import (
 	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
+	"github.com/stretchr/testify/require"
 )
 
 type MockEvent struct {
@@ -79,10 +80,10 @@ func TestNewSMTP(t *testing.T) {
 			smtp, err := email.NewSMTP(context.Background(), entry, tt.monitor, tt.name, nil, true, true, tt.config)
 
 			if tt.expectError {
-				assert.Error(t, err)
+				require.Error(t, err)
 				assert.Nil(t, smtp)
 			} else {
-				assert.NoError(t, err)
+				require.NoError(t, err)
 				assert.NotNil(t, smtp)
 				assert.Equal(t, tt.name, smtp.GetName())
 				assert.Equal(t, tt.config, smtp.GetConfig())
@@ -102,13 +103,13 @@ func TestSMTPStartStop(t *testing.T) {
 		From:     "test@example.com",
 		To:       []string{"recipient@example.com"},
 	})
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	err = smtp.Start(context.Background())
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	err = smtp.Stop(context.Background())
-	assert.NoError(t, err)
+	require.NoError(t, err)
 }
 
 func TestSMTPGetTypeAndName(t *testing.T) {
@@ -122,7 +123,7 @@ func TestSMTPGetTypeAndName(t *testing.T) {
 		From:     "test@example.com",
 		To:       []string{"recipient@example.com"},
 	})
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	assert.Equal(t, email.SourceType, smtp.GetType())
 	assert.Equal(t, "test_source", smtp.GetName())

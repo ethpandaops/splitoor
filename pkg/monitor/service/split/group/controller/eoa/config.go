@@ -1,6 +1,6 @@
 package eoa
 
-import "fmt"
+import "errors"
 
 type Config struct {
 	Address string `yaml:"address"`
@@ -8,11 +8,11 @@ type Config struct {
 
 func (c *Config) Validate() error {
 	if c == nil {
-		return fmt.Errorf("config is nil")
+		return errors.New("config is nil")
 	}
 
 	if c.Address == "" {
-		return fmt.Errorf("address is required")
+		return errors.New("address is required")
 	}
 
 	return nil

@@ -1,7 +1,7 @@
 package beaconchain
 
 import (
-	"fmt"
+	"errors"
 	"time"
 )
 
@@ -20,15 +20,15 @@ func (c *Config) Validate() error {
 	}
 
 	if c.BatchSize <= 0 {
-		return fmt.Errorf("batch size must be greater than 0")
+		return errors.New("batch size must be greater than 0")
 	}
 
 	if c.MaxRequestsPerMinute <= 0 {
-		return fmt.Errorf("max requests per hour must be greater than 0")
+		return errors.New("max requests per hour must be greater than 0")
 	}
 
 	if c.Endpoint == "" {
-		return fmt.Errorf("endpoint is required")
+		return errors.New("endpoint is required")
 	}
 
 	return nil

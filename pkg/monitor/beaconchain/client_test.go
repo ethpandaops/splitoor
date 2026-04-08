@@ -89,8 +89,10 @@ func TestClient_GetValidators(t *testing.T) {
 				w.WriteHeader(tt.serverStatus)
 
 				if tt.serverResponse != nil {
-					err := json.NewEncoder(w).Encode(tt.serverResponse)
-					require.NoError(t, err)
+					if err := json.NewEncoder(w).Encode(tt.serverResponse); err != nil {
+						http.Error(w, err.Error(), http.StatusInternalServerError)
+						return
+					}
 				}
 			}))
 			defer server.Close()
@@ -112,7 +114,7 @@ func TestClient_GetValidators(t *testing.T) {
 			}
 
 			require.NoError(t, err)
-			assert.Equal(t, tt.expectedLen, len(validators))
+			assert.Len(t, validators, tt.expectedLen)
 
 			if tt.serverResponse != nil && tt.serverResponse.Data != nil {
 				for _, v := range tt.serverResponse.Data {
@@ -182,8 +184,10 @@ func TestClient_GetValidator(t *testing.T) {
 				w.WriteHeader(tt.serverStatus)
 
 				if tt.serverResponse != nil {
-					err := json.NewEncoder(w).Encode(tt.serverResponse)
-					require.NoError(t, err)
+					if err := json.NewEncoder(w).Encode(tt.serverResponse); err != nil {
+						http.Error(w, err.Error(), http.StatusInternalServerError)
+						return
+					}
 				}
 			}))
 			defer server.Close()
@@ -225,6 +229,7 @@ func TestClient_GetConfig(t *testing.T) {
 	assert.Equal(t, 10, c.GetMaxRequestsPerMinute())
 	assert.Equal(t, time.Second, c.GetCheckInterval())
 }
+
 func TestClient_GetValidators_EmptyPubkeys(t *testing.T) {
 	serverCalled := false
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -232,11 +237,13 @@ func TestClient_GetValidators_EmptyPubkeys(t *testing.T) {
 
 		w.WriteHeader(http.StatusOK)
 
-		err := json.NewEncoder(w).Encode(&beaconchain.Response[[]beaconchain.Validator]{
+		if err := json.NewEncoder(w).Encode(&beaconchain.Response[[]beaconchain.Validator]{
 			Status: "OK",
 			Data:   []beaconchain.Validator{},
-		})
-		require.NoError(t, err)
+		}); err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
 	}))
 
 	defer server.Close()
@@ -261,11 +268,13 @@ func TestClient_APIKeyHeader(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		assert.Equal(t, expectedAPIKey, r.Header.Get("apikey"))
 
-		err := json.NewEncoder(w).Encode(&beaconchain.Response[beaconchain.Validator]{
+		if err := json.NewEncoder(w).Encode(&beaconchain.Response[beaconchain.Validator]{
 			Status: "OK",
 			Data:   beaconchain.Validator{},
-		})
-		require.NoError(t, err)
+		}); err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
 	}))
 
 	defer server.Close()
@@ -288,11 +297,13 @@ func TestClient_URLConstruction(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		assert.True(t, strings.HasSuffix(r.URL.Path, strings.Join(pubkeys, ",")))
 
-		err := json.NewEncoder(w).Encode(&beaconchain.Response[[]beaconchain.Validator]{
+		if err := json.NewEncoder(w).Encode(&beaconchain.Response[[]beaconchain.Validator]{
 			Status: "OK",
 			Data:   []beaconchain.Validator{},
-		})
-		require.NoError(t, err)
+		}); err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
 	}))
 
 	defer server.Close()

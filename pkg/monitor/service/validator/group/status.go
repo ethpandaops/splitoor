@@ -32,7 +32,7 @@ const (
 //
 // Offline could be supported by checking the last 3 epochs.
 func BeaconAPIToMetricsStatus(status v1.ValidatorState, slashed bool) MetricsStatus {
-	switch status {
+	switch status { //nolint:exhaustive // only mapping known states, default handles rest
 	case v1.ValidatorStatePendingInitialized:
 		return MetricsStatusDeposited
 	case v1.ValidatorStatePendingQueued:

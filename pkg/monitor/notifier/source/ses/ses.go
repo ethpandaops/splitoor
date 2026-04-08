@@ -2,6 +2,7 @@ package ses
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"strings"
 
@@ -30,7 +31,7 @@ type SES struct {
 
 func NewSES(ctx context.Context, log logrus.FieldLogger, monitor, name string, docs *string, includeMonitorName, includeGroupName bool, config *Config) (*SES, error) {
 	if config == nil {
-		return nil, fmt.Errorf("config is required")
+		return nil, errors.New("config is required")
 	}
 
 	sess, err := session.NewSession(&aws.Config{})
@@ -96,21 +97,22 @@ func (s *SES) Publish(ctx context.Context, e event.Event) error {
 		Message: &ses.Message{
 			Body: &ses.Body{
 				Text: &ses.Content{
-					Charset: aws.String("UTF-8"),
-					Data:    aws.String(description),
+					Charset: new("UTF-8"),
+					Data:    new(description),
 				},
 			},
 			Subject: &ses.Content{
-				Charset: aws.String("UTF-8"),
-				Data:    aws.String(fmt.Sprintf("🚨 %s", e.GetTitle(s.includeMonitorName, s.includeGroupName))),
+				Charset: new("UTF-8"),
+				Data:    new("🚨 " + e.GetTitle(s.includeMonitorName, s.includeGroupName)),
 			},
 		},
-		Source: aws.String(s.config.From),
+		Source: new(s.config.From),
 	}
 
 	_, err := s.client.SendEmailWithContext(ctx, input)
 	if err != nil {
-		if aerr, ok := err.(awserr.Error); ok {
+		var aerr awserr.Error
+		if errors.As(err, &aerr) {
 			switch aerr.Code() {
 			case ses.ErrCodeMessageRejected:
 				errorType = "message_rejected"

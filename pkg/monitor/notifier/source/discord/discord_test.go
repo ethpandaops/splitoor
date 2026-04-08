@@ -10,6 +10,7 @@ import (
 	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
+	"github.com/stretchr/testify/require"
 )
 
 type MockEvent struct {
@@ -82,10 +83,10 @@ func TestNewDiscord(t *testing.T) {
 			discord, err := disc.NewDiscord(context.Background(), entry, tt.monitor, tt.name, nil, true, true, tt.config)
 
 			if tt.expectError {
-				assert.Error(t, err)
+				require.Error(t, err)
 				assert.Nil(t, discord)
 			} else {
-				assert.NoError(t, err)
+				require.NoError(t, err)
 				assert.NotNil(t, discord)
 				assert.Equal(t, tt.name, discord.GetName())
 				assert.Equal(t, tt.config.Webhook, discord.GetConfig().Webhook)
@@ -131,7 +132,7 @@ func TestDiscordPublish(t *testing.T) {
 			discord, err := disc.NewDiscord(context.Background(), entry, "test", "test_source", nil, true, true, &disc.Config{
 				Webhook: server.URL,
 			})
-			assert.NoError(t, err)
+			require.NoError(t, err)
 
 			mockEvent := new(MockEvent)
 			mockEvent.On("GetGroup").Return("test_group")
@@ -141,9 +142,9 @@ func TestDiscordPublish(t *testing.T) {
 			err = discord.Publish(context.Background(), mockEvent)
 
 			if tt.expectError {
-				assert.Error(t, err)
+				require.Error(t, err)
 			} else {
-				assert.NoError(t, err)
+				require.NoError(t, err)
 			}
 
 			mockEvent.AssertExpectations(t)
@@ -157,13 +158,13 @@ func TestDiscordStartStop(t *testing.T) {
 	discord, err := disc.NewDiscord(context.Background(), entry, "test", "test_source", nil, true, true, &disc.Config{
 		Webhook: "https://discord.com/api/webhooks/test",
 	})
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	err = discord.Start(context.Background())
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	err = discord.Stop(context.Background())
-	assert.NoError(t, err)
+	require.NoError(t, err)
 }
 
 func TestDiscordGetTypeAndName(t *testing.T) {
@@ -172,7 +173,7 @@ func TestDiscordGetTypeAndName(t *testing.T) {
 	discord, err := disc.NewDiscord(context.Background(), entry, "test", "test_source", nil, true, true, &disc.Config{
 		Webhook: "https://discord.com/api/webhooks/test",
 	})
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	assert.Equal(t, disc.SourceType, discord.GetType())
 	assert.Equal(t, "test_source", discord.GetName())
