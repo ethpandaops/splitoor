@@ -99,7 +99,6 @@ linters:
       - linters:
           - funlen
           - gocognit
-          - goconst
         path: _test\.go
     presets:
       - comments
