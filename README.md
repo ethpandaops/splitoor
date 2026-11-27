@@ -74,6 +74,24 @@ Look at the [example_config.yaml](./example_config.yaml) for an example configur
 splitoor monitor --config <CONFIG_FILE>
 ```
 
+#### Environment variables
+
+The monitor config file can reference environment variables, so credentials can be kept out of the file:
+
+```yaml
+safe:
+  apiKey: "${SAFE_API_KEY}"
+beaconchain:
+  apiKey: "${BEACONCHAIN_API_KEY:-}"
+  batchSize: ${BEACONCHAIN_BATCH_SIZE:-100}
+```
+
+- `${VAR}` is replaced with the value of `VAR`. If `VAR` is unset or empty, splitoor refuses to start and names the variable.
+- `${VAR:-default}` uses `default` when `VAR` is unset or empty. `${VAR:-}` makes the variable optional.
+- Only the `${...}` form is expanded: `$VAR` and any other `$` are kept as written.
+- Placeholders are expanded in values only, after the YAML is parsed. Keys and comments are never expanded, and a value containing quotes, `#`, tabs or newlines arrives exactly as set.
+- An unquoted placeholder takes the type of its value, so `batchSize: ${BEACONCHAIN_BATCH_SIZE:-100}` can fill a number. A quoted placeholder is always a string.
+
 ### 0xSplits
 
 Splitoor can interact with [0xSplits v1](https://docs.splits.org/core/split) contracts.
