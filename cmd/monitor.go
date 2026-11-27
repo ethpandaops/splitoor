@@ -2,12 +2,10 @@ package cmd
 
 import (
 	"context"
-	"os"
 
 	"github.com/creasty/defaults"
 	m "github.com/ethpandaops/splitoor/pkg/monitor"
 	"github.com/spf13/cobra"
-	"gopkg.in/yaml.v2"
 )
 
 var monitorConfigFile string
@@ -60,15 +58,10 @@ func loadMonitorConfigFromFile(file string) (*m.Config, error) {
 		return nil, defaultsErr
 	}
 
-	yamlFile, err := os.ReadFile(file)
-	if err != nil {
-		return nil, err
-	}
-
 	type plain m.Config
 
-	if unmarshalErr := yaml.Unmarshal(yamlFile, (*plain)(config)); unmarshalErr != nil {
-		return nil, unmarshalErr
+	if err := loadConfigFile(file, (*plain)(config)); err != nil {
+		return nil, err
 	}
 
 	return config, nil
